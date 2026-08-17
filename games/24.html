@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Баскетбол</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 16px 18px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 { font-size: 24px; font-weight: 900; margin-bottom: 4px; }
+        .info {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: 16px;
+            margin-bottom: 8px;
+            padding: 0 4px;
+        }
+        .info span {
+            background: #f5f5f5;
+            padding: 4px 12px;
+            border-radius: 12px;
+            border: 2px solid #ddd;
+        }
+        canvas {
+            border: 3px solid #111;
+            border-radius: 16px;
+            background: linear-gradient(180deg, #87CEEB 60%, #8B6914 60%);
+            display: block;
+            margin: 0 auto;
+            width: 100%;
+            aspect-ratio: 300/400;
+            touch-action: none;
+        }
+        .status {
+            font-weight: 700;
+            min-height: 28px;
+            margin: 8px 0 4px;
+            font-size: 16px;
+        }
+        .power-bar {
+            width: 100%;
+            height: 16px;
+            background: #ddd;
+            border-radius: 8px;
+            border: 2px solid #111;
+            overflow: hidden;
+            margin: 4px 0;
+        }
+        .power-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+            transition: width 0.05s;
+            border-radius: 6px;
+        }
+        .reset-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 16px;
+            padding: 10px 28px;
+            border: 3px solid #111;
+            border-radius: 40px;
+            background: white;
+            color: #111;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            margin-top: 4px;
+            touch-action: manipulation;
+            min-height: 48px;
+        }
+        .reset-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+        .hint {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            margin: 4px 0;
+        }
+        @media (max-width: 480px) {
+            .game { padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>🏀 Баскетбол</h2>
+        <div class="info">
+            <span>🏆 <span id="score">0</span></span>
+            <span>🎯 <span id="attempts">0</span></span>
+        </div>
+        <canvas id="canvas" width="300" height="400"></canvas>
+        <div class="power-bar">
+            <div class="power-fill" id="powerFill"></div>
+        </div>
+        <div class="status" id="status">Нажми и держи для заряда</div>
+        <div class="hint">👆 Нажми и держи для силы, отпусти для броска</div>
+        <button class="reset-btn" id="resetBtn">🔄 Новая игра</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const attemptsEl = document.getElementById('attempts');
+        const statusEl = document.getElementById('status');
+        const powerFill = document.getElementById('powerFill');
+
+        const W = 300, H = 400;
+        const GRAVITY = 0.3;
+        const FRICTION = 0.99;
+        
+        let ball = { x: 150, y: 370, vx: 0, vy: 0, radius: 12 };
+        let basket = { x: 150, y: 80, width: 50, height: 10 };
+        let backboard = { x: 150, y: 60, width: 60, height: 10 };
+        let score = 0, attempts = 0;
+        let gameActive = true;
+        let charging = false;
+        let power = 0;
+        let angle = -60; // градусов
+        let canShoot = true;
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            
+            // корзина
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(backboard.x - backboard.width/2, backboard.y, backboard.width, backboard.height);
+            ctx.fillStyle = '#FF6347';
+            ctx.fillRect(basket.x - basket.width/2, basket.y, basket.width, basket.height);
+            // кольцо
+            ctx.strokeStyle = '#FF4500';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(basket.x - basket.width/2, basket.y);
+            ctx.lineTo(basket.x - basket.width/2, basket.y + 20);
+            ctx.moveTo(basket.x + basket.width/2, basket.y);
+            ctx.lineTo(basket.x + basket.width/2, basket.y + 20);
+            ctx.stroke();
+
+            // мяч
+            ctx.fillStyle = '#FF6B00';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#111';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🏀', ball.x, ball.y + 2);
+
+            // прицел
+            if (canShoot && !charging) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                const endX = ball.x + Math.cos(angle * Math.PI / 180) * 80;
+                const endY = ball.y + Math.sin(angle * Math.PI / 180) * 80;
+                ctx.beginPath();
+                ctx.moveTo(ball.x, ball.y);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        function shoot() {
+            if (!canShoot || !gameActive) return;
+            if (power < 0.1) return;
+            
+            canShoot = false;
+            attempts++;
+            attemptsEl.textContent = attempts;
+            const force = power * 12;
+            ball.vx = Math.cos(angle * Math.PI / 180) * force;
+            ball.vy = Math.sin(angle * Math.PI / 180) * force;
+            statusEl.textContent = 'Летит!';
+            
+            let loop = setInterval(() => {
+                ball.vy += GRAVITY;
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+                ball.vx *= FRICTION;
+                
+                // стены
+                if (ball.x - ball.radius < 0 || ball.x + ball.radius > W) {
+                    ball.vx *= -0.8;
+                    ball.x = Math.max(ball.radius, Math.min(W - ball.radius, ball.x));
+                }
+                
+                // пол
+                if (ball.y + ball.radius > H) {
+                    ball.y = H - ball.radius;
+                    ball.vy *= -0.5;
+                    ball.vx *= 0.9;
+                    if (Math.abs(ball.vy) < 0.5) {
+                        ball.vy = 0;
+                        clearInterval(loop);
+                        statusEl.textContent = 'Промах!';
+                        canShoot = true;
+                        power = 0;
+                        powerFill.style.width = '0%';
+                        resetBall();
+                        draw();
+                    }
+                }
+                
+                // корзина
+                if (ball.x > basket.x - basket.width/2 && 
+                    ball.x < basket.x + basket.width/2 &&
+                    ball.y > basket.y - ball.radius && 
+                    ball.y < basket.y + basket.height/2) {
+                    // попал!
+                    score++;
+                    scoreEl.textContent = score;
+                    statusEl.textContent = '🎉 Попал!';
+                    clearInterval(loop);
+                    canShoot = true;
+                    power = 0;
+                    powerFill.style.width = '0%';
+                    resetBall();
+                    draw();
+                }
+                
+                // проверка вылета за пределы
+                if (ball.y > H + 50 || ball.x < -50 || ball.x > W + 50) {
+                    clearInterval(loop);
+                    if (!(ball.y > H && ball.x > basket.x - 30 && ball.x < basket.x + 30)) {
+                        statusEl.textContent = 'Промах!';
+                    }
+                    canShoot = true;
+                    power = 0;
+                    powerFill.style.width = '0%';
+                    resetBall();
+                    draw();
+                }
+                
+                draw();
+            }, 30);
+        }
+
+        function resetBall() {
+            ball.x = 150;
+            ball.y = 370;
+            ball.vx = 0;
+            ball.vy = 0;
+        }
+
+        // Управление
+        canvas.addEventListener('mousedown', (e) => {
+            if (!canShoot) return;
+            charging = true;
+            power = 0;
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (charging) {
+                charging = false;
+                shoot();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (charging) {
+                power = Math.min(1, power + 0.02);
+                powerFill.style.width = (power * 100) + '%';
+                // угол по позиции мыши
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left) / rect.width * W;
+                const mouseY = (e.clientY - rect.top) / rect.height * H;
+                const dx = mouseX - ball.x;
+                const dy = mouseY - ball.y;
+                angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                angle = Math.max(-80, Math.min(-20, angle));
+                draw();
+            }
+        });
+
+        // Тач
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!canShoot) return;
+            charging = true;
+            power = 0;
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!charging) return;
+            power = Math.min(1, power + 0.02);
+            powerFill.style.width = (power * 100) + '%';
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const touchX = (touch.clientX - rect.left) / rect.width * W;
+            const touchY = (touch.clientY - rect.top) / rect.height * H;
+            const dx = touchX - ball.x;
+            const dy = touchY - ball.y;
+            angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            angle = Math.max(-80, Math.min(-20, angle));
+            draw();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (charging) {
+                charging = false;
+                shoot();
+            }
+        }, { passive: false });
+
+        resetBtn.addEventListener('click', () => {
+            score = 0;
+            attempts = 0;
+            scoreEl.textContent = '0';
+            attemptsEl.textContent = '0';
+            statusEl.textContent = 'Нажми и держи для заряда';
+            canShoot = true;
+            power = 0;
+            powerFill.style.width = '0%';
+            resetBall();
+            draw();
+        });
+
+        resetBall();
+        draw();
+    </script>
+</body>
+</html>
