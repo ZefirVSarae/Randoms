@@ -12,6 +12,24 @@
         body, button, input, select, textarea {
             font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
         }
+        /* Анимация пульсации для счётчика */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .game-count {
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+        /* Стили для iframe */
+        #app-container iframe {
+            transition: opacity 0.3s ease;
+        }
+        #app-container iframe.loading {
+            opacity: 0;
+        }
+        #app-container iframe.loaded {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-white text-neutral-900 min-h-screen flex flex-col justify-between items-center p-4 sm:p-8 selection:bg-neutral-200">
@@ -32,15 +50,84 @@
         </div>
     </main>
 
-    <script>
-        const TOTAL_TEMPLATES = 50; // теперь 50 игр
+    <!-- Футер с количеством игр -->
+    <footer class="w-full max-w-4xl mt-8 pt-4 border-t border-neutral-200 flex justify-between items-center text-xs text-neutral-400 font-bold">
+        <div class="game-count" id="gameCounter">🎮 Игр: <span id="gameCount">...</span></div>
+        <div>v2.0 · автоматическое обновление</div>
+    </footer>
 
+    <script>
+        // === АВТОМАТИЧЕСКОЕ ОПРЕДЕЛЕНИЕ КОЛИЧЕСТВА ИГР ===
+        let TOTAL_TEMPLATES = 25; // значение по умолчанию, будет обновлено
+        let gameList = [];
+
+        // Функция для получения списка игр из папки games
+        async function fetchGameList() {
+            try {
+                // Пытаемся получить список файлов через GitHub API
+                const response = await fetch('https://api.github.com/repos/ZefirVSarae/Randoms/contents/games');
+                if (!response.ok) {
+                    throw new Error('Не удалось получить список игр');
+                }
+                const files = await response.json();
+                
+                // Фильтруем только .html файлы
+                const htmlFiles = files
+                    .filter(file => file.name.endsWith('.html'))
+                    .map(file => {
+                        const num = parseInt(file.name.replace('.html', ''));
+                        return { number: num, name: file.name };
+                    })
+                    .sort((a, b) => a.number - b.number);
+                
+                gameList = htmlFiles;
+                TOTAL_TEMPLATES = htmlFiles.length;
+                
+                // Обновляем счётчик в футере
+                document.getElementById('gameCount').textContent = TOTAL_TEMPLATES;
+                
+                // Если игр меньше 50, обновляем логику
+                if (TOTAL_TEMPLATES > 0) {
+                    console.log(`✅ Загружено ${TOTAL_TEMPLATES} игр`);
+                } else {
+                    console.warn('⚠️ Игры не найдены, используем значение по умолчанию');
+                    // Если игр нет, пробуем использовать локальный список
+                    tryLocalGameList();
+                }
+                
+                return htmlFiles;
+            } catch (error) {
+                console.warn('⚠️ Не удалось загрузить список игр через API:', error.message);
+                // Пробуем использовать локальный список как запасной вариант
+                tryLocalGameList();
+                return gameList;
+            }
+        }
+
+        // Запасной вариант: если API не работает, используем локальный список
+        function tryLocalGameList() {
+            // Пытаемся определить количество игр из уже загруженных iframe (но это ненадёжно)
+            // Поэтому оставляем значение по умолчанию
+            if (TOTAL_TEMPLATES === 0) {
+                TOTAL_TEMPLATES = 25;
+                document.getElementById('gameCount').textContent = `${TOTAL_TEMPLATES} (локально)`;
+            }
+        }
+
+        // === ОСНОВНАЯ ЛОГИКА ПОРТАЛА ===
         function getDeterministicSlot(nowSec) {
+            // Используем TOTAL_TEMPLATES для ограничения количества слотов
+            // Делаем так, чтобы слоты циклически повторялись, но с разными длительностями
             let slotIndex = 0;
             let currentSec = 0;
-            while (true) {
+            let maxAttempts = 1000; // защита от бесконечного цикла
+            
+            while (maxAttempts > 0) {
+                maxAttempts--;
+                // Генерируем длительность на основе индекса слота
                 let h = (slotIndex * 12582917 + 72139) % 1000000;
                 let duration = 1800 + (Math.abs(h) % 1801);
+                
                 if (currentSec + duration > nowSec) {
                     return {
                         slotIndex: slotIndex,
@@ -52,16 +139,26 @@
                 currentSec += duration;
                 slotIndex++;
             }
+            
+            // fallback
+            return {
+                slotIndex: 0,
+                startTime: nowSec,
+                duration: 1800,
+                endTime: nowSec + 1800
+            };
         }
 
         function calculateTemplateIndex(slot) {
+            if (TOTAL_TEMPLATES === 0) return 0;
+            
             let seed = (slot.slotIndex * 1664525 + 1013904223) % 4294967296;
             let lastTwoDigits = Math.abs(seed) % 100;
             let subSeed = (slot.slotIndex * 22695477 + 1) % 4294967296;
             let subtractValue = 15 + (Math.abs(subSeed) % 16);
             let rawVal = lastTwoDigits - subtractValue;
             let finalIdx = Math.abs(rawVal) % TOTAL_TEMPLATES;
-            return finalIdx; // 0..49
+            return finalIdx;
         }
 
         let currentActiveSlot = -1;
@@ -80,21 +177,83 @@
             if (currentActiveSlot !== slot.slotIndex) {
                 currentActiveSlot = slot.slotIndex;
                 
-                const gameIdx = calculateTemplateIndex(slot); // 0..49
-                const gameNumber = gameIdx + 1;              // 1..50
+                if (TOTAL_TEMPLATES === 0) {
+                    // Если игр нет, показываем сообщение
+                    const container = document.getElementById('app-container');
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-[500px] text-neutral-400">
+                            <span class="text-6xl mb-4">🎮</span>
+                            <p class="font-bold text-lg">Нет доступных игр</p>
+                            <p class="text-sm">Добавьте игры в папку /games</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const gameIdx = calculateTemplateIndex(slot);
+                // Убеждаемся, что индекс не выходит за пределы
+                const safeIdx = Math.min(gameIdx, TOTAL_TEMPLATES - 1);
+                const gameNumber = safeIdx + 1;
                 
                 const container = document.getElementById('app-container');
                 container.innerHTML = `
                     <iframe src="games/${gameNumber}.html" 
-                            class="w-full h-[500px] border-0 rounded-2xl"
+                            class="w-full h-[500px] border-0 rounded-2xl loading"
                             scrolling="auto"
                             title="Игра ${gameNumber}"></iframe>
                 `;
+                
+                // Добавляем обработчик загрузки iframe для плавного появления
+                const iframe = container.querySelector('iframe');
+                iframe.addEventListener('load', () => {
+                    iframe.classList.remove('loading');
+                    iframe.classList.add('loaded');
+                });
+                
+                // Если iframe не загружается в течение 5 секунд, показываем ошибку
+                setTimeout(() => {
+                    if (iframe.classList.contains('loading')) {
+                        iframe.classList.remove('loading');
+                        iframe.classList.add('loaded');
+                    }
+                }, 5000);
             }
         }
 
-        setInterval(updatePortal, 1000);
-        updatePortal();
+        // === ИНИЦИАЛИЗАЦИЯ ===
+        async function init() {
+            // Сначала загружаем список игр
+            await fetchGameList();
+            
+            // Обновляем портал
+            updatePortal();
+            
+            // Запускаем таймер
+            setInterval(updatePortal, 1000);
+        }
+
+        // Запускаем инициализацию
+        init();
+
+        // Обновляем счётчик при фокусе на вкладке (на случай, если список изменился)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                fetchGameList();
+            }
+        });
+
+        // Можно обновлять список каждые 5 минут
+        setInterval(fetchGameList, 300000);
+
+        // Обработка ошибок загрузки iframe
+        window.addEventListener('error', (e) => {
+            if (e.target.tagName === 'IFRAME') {
+                console.warn('Ошибка загрузки игры:', e.target.src);
+            }
+        }, true);
+
+        console.log('🎮 Randoms Portal v2.0');
+        console.log('📁 Игры будут автоматически определены из папки /games');
     </script>
 </body>
 </html>
