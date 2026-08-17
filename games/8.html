@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Крестики-нолики</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 20px 24px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .cell {
+            aspect-ratio: 1/1;
+            border: 3px solid #111;
+            border-radius: 16px;
+            font-size: 48px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: white;
+            transition: 0.1s;
+            box-shadow: 4px 4px 0 0 #111;
+        }
+        .cell:active:not(.taken) {
+            transform: scale(0.95);
+            box-shadow: 2px 2px 0 0 #111;
+        }
+        .cell.taken { cursor: default; }
+        .status {
+            font-weight: 800;
+            font-size: 20px;
+            min-height: 40px;
+        }
+        .reset-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 16px;
+            padding: 8px 24px;
+            border: 3px solid #111;
+            border-radius: 40px;
+            background: white;
+            color: #111;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            margin-top: 4px;
+        }
+        .reset-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>❌⭕ Крестики-нолики</h2>
+        <div class="board" id="board"></div>
+        <div class="status" id="status">Твой ход (X)</div>
+        <button class="reset-btn" id="resetBtn">🔄 Новая игра</button>
+    </div>
+    <script>
+        let board = Array(9).fill(null);
+        let turn = 'X'; // X - игрок, O - ИИ
+        let gameOver = false;
+
+        const statusEl = document.getElementById('status');
+        const boardEl = document.getElementById('board');
+        const resetBtn = document.getElementById('resetBtn');
+
+        const winPatterns = [
+            [0,1,2],[3,4,5],[6,7,8],
+            [0,3,6],[1,4,7],[2,5,8],
+            [0,4,8],[2,4,6]
+        ];
+
+        function checkWinner(boardArr) {
+            for (let p of winPatterns) {
+                const [a,b,c] = p;
+                if (boardArr[a] && boardArr[a] === boardArr[b] && boardArr[a] === boardArr[c]) {
+                    return boardArr[a];
+                }
+            }
+            if (boardArr.every(cell => cell !== null)) return 'draw';
+            return null;
+        }
+
+        function render() {
+            boardEl.innerHTML = '';
+            board.forEach((val, idx) => {
+                const cell = document.createElement('div');
+                cell.className = 'cell' + (val ? ' taken' : '');
+                cell.textContent = val || '';
+                cell.dataset.idx = idx;
+                cell.addEventListener('click', () => humanMove(idx));
+                boardEl.appendChild(cell);
+            });
+        }
+
+        function humanMove(idx) {
+            if (gameOver) return;
+            if (turn !== 'X') return;
+            if (board[idx]) return;
+            makeMove(idx, 'X');
+        }
+
+        function makeMove(idx, player) {
+            board[idx] = player;
+            render();
+            const winner = checkWinner(board);
+            if (winner) {
+                gameOver = true;
+                if (winner === 'draw') statusEl.textContent = '🤝 Ничья!';
+                else if (winner === 'X') statusEl.textContent = '🎉 Ты победил!';
+                else statusEl.textContent = '😵 ИИ победил!';
+                return;
+            }
+            // смена хода
+            turn = (player === 'X') ? 'O' : 'X';
+            statusEl.textContent = (turn === 'X') ? 'Твой ход (X)' : 'Ход ИИ (O)...';
+            if (turn === 'O' && !gameOver) {
+                setTimeout(aiMove, 400);
+            }
+        }
+
+        function aiMove() {
+            if (gameOver) return;
+            if (turn !== 'O') return;
+            // простой ИИ: случайная свободная клетка
+            const empty = board.map((v,i) => v === null ? i : null).filter(v => v !== null);
+            if (empty.length === 0) return;
+            // можно добавить минимальную логику, но для простоты случайный
+            const randomIdx = empty[Math.floor(Math.random() * empty.length)];
+            makeMove(randomIdx, 'O');
+        }
+
+        function resetGame() {
+            board = Array(9).fill(null);
+            turn = 'X';
+            gameOver = false;
+            statusEl.textContent = 'Твой ход (X)';
+            render();
+        }
+
+        resetBtn.addEventListener('click', resetGame);
+        resetGame();
+    </script>
+</body>
+</html>
