@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Змейка</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 20px 24px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 3px solid #111;
+            border-radius: 16px;
+            background: #f5f5f5;
+            display: block;
+            margin: 0 auto;
+            width: 100%;
+            aspect-ratio: 1/1;
+        }
+        .message {
+            font-weight: 700;
+            min-height: 28px;
+            margin-top: 6px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 8px 0;
+        }
+        .ctrl-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 24px;
+            width: 56px;
+            height: 56px;
+            border: 3px solid #111;
+            border-radius: 16px;
+            background: white;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            user-select: none;
+        }
+        .ctrl-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+        .reset-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 16px;
+            padding: 8px 24px;
+            border: 3px solid #111;
+            border-radius: 40px;
+            background: white;
+            color: #111;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            margin-top: 4px;
+        }
+        .reset-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>🐍 Змейка</h2>
+        <div class="stats">
+            <span>🍎 <span id="score">0</span></span>
+            <span>🏆 <span id="highscore">0</span></span>
+        </div>
+        <canvas id="canvas" width="400" height="400"></canvas>
+        <div class="message" id="message"></div>
+        <div class="controls">
+            <button class="ctrl-btn" id="up">▲</button>
+            <button class="ctrl-btn" id="left">◀</button>
+            <button class="ctrl-btn" id="down">▼</button>
+            <button class="ctrl-btn" id="right">▶</button>
+        </div>
+        <button class="reset-btn" id="resetBtn">🔄 Новая игра</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const highscoreEl = document.getElementById('highscore');
+        const messageEl = document.getElementById('message');
+
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let snake = [{x: 10, y: 10}];
+        let food = {x: 15, y: 15};
+        let dx = 0, dy = 0;
+        let score = 0;
+        let highscore = parseInt(localStorage.getItem('snakeHighscore')) || 0;
+        let gameOver = false;
+        let gameLoop = null;
+
+        highscoreEl.textContent = highscore;
+
+        function randomFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+            // чтобы не появилась на змее
+            for (let seg of snake) {
+                if (seg.x === food.x && seg.y === food.y) {
+                    randomFood();
+                    break;
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // змея
+            snake.forEach((seg, idx) => {
+                ctx.fillStyle = (idx === 0) ? '#22c55e' : '#86efac';
+                ctx.fillRect(seg.x * gridSize, seg.y * gridSize, gridSize-2, gridSize-2);
+            });
+            // еда
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(food.x * gridSize + gridSize/2, food.y * gridSize + gridSize/2, gridSize/2 - 2, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        function move() {
+            if (gameOver) return;
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+
+            // стены
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                endGame();
+                return;
+            }
+
+            // еда
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreEl.textContent = score;
+                snake.unshift(head);
+                randomFood();
+            } else {
+                snake.pop();
+                snake.unshift(head);
+            }
+
+            // самопоедание
+            for (let i = 1; i < snake.length; i++) {
+                if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) {
+                    endGame();
+                    return;
+                }
+            }
+
+            draw();
+        }
+
+        function endGame() {
+            gameOver = true;
+            if (gameLoop) clearInterval(gameLoop);
+            messageEl.textContent = '💀 Игра окончена!';
+            if (score > highscore) {
+                highscore = score;
+                localStorage.setItem('snakeHighscore', highscore);
+                highscoreEl.textContent = highscore;
+                messageEl.textContent += ' 🎉 Новый рекорд!';
+            }
+            dx = 0; dy = 0;
+        }
+
+        function resetGame() {
+            if (gameLoop) clearInterval(gameLoop);
+            snake = [{x: 10, y: 10}];
+            dx = 0; dy = 0;
+            score = 0;
+            scoreEl.textContent = '0';
+            gameOver = false;
+            messageEl.textContent = '';
+            randomFood();
+            draw();
+            // запуск только если есть направление
+        }
+
+        function startLoop() {
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(() => {
+                if (!gameOver && (dx !== 0 || dy !== 0)) {
+                    move();
+                }
+            }, 150);
+        }
+
+        // управление
+        document.addEventListener('keydown', (e) => {
+            const key = e.key;
+            e.preventDefault();
+            if (gameOver) return;
+            if (key === 'ArrowUp' && dy === 0) { dx = 0; dy = -1; startLoop(); }
+            else if (key === 'ArrowDown' && dy === 0) { dx = 0; dy = 1; startLoop(); }
+            else if (key === 'ArrowLeft' && dx === 0) { dx = -1; dy = 0; startLoop(); }
+            else if (key === 'ArrowRight' && dx === 0) { dx = 1; dy = 0; startLoop(); }
+        });
+
+        // кнопки
+        document.getElementById('up').addEventListener('click', () => {
+            if (gameOver) return;
+            if (dy === 0) { dx = 0; dy = -1; startLoop(); }
+        });
+        document.getElementById('down').addEventListener('click', () => {
+            if (gameOver) return;
+            if (dy === 0) { dx = 0; dy = 1; startLoop(); }
+        });
+        document.getElementById('left').addEventListener('click', () => {
+            if (gameOver) return;
+            if (dx === 0) { dx = -1; dy = 0; startLoop(); }
+        });
+        document.getElementById('right').addEventListener('click', () => {
+            if (gameOver) return;
+            if (dx === 0) { dx = 1; dy = 0; startLoop(); }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            resetGame();
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = null;
+            startLoop(); // можно сразу запустить, но без направления не будет двигаться
+        });
+
+        // инициализация
+        resetGame();
+        randomFood();
+        draw();
+    </script>
+</body>
+</html>
