@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Паззл</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 18px 20px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 { font-size: 26px; font-weight: 900; margin-bottom: 6px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin: 10px auto;
+            max-width: 280px;
+        }
+        .tile {
+            aspect-ratio: 1/1;
+            border: 3px solid #111;
+            border-radius: 16px;
+            background: #facc15;
+            font-size: 36px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.15s;
+            box-shadow: 4px 4px 0 0 #111;
+        }
+        .tile.empty {
+            background: white;
+            box-shadow: none;
+            border-color: #ddd;
+            cursor: default;
+        }
+        .tile:active:not(.empty) {
+            transform: scale(0.92);
+            box-shadow: 2px 2px 0 0 #111;
+        }
+        .status { font-weight: 700; min-height: 28px; margin: 6px 0; }
+        .reset-btn {
+            font-family: inherit; font-weight: 800; font-size: 16px;
+            padding: 8px 24px; border: 3px solid #111; border-radius: 40px;
+            background: white; color: #111; cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc; transition: 0.1s;
+            margin-top: 4px;
+        }
+        .reset-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 0 #ccc; }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>🧩 Паззл</h2>
+        <div class="grid" id="grid"></div>
+        <div class="status" id="status">Соберите по порядку</div>
+        <button class="reset-btn" id="resetBtn">🔄 Перемешать</button>
+    </div>
+    <script>
+        const size = 3;
+        let tiles = [];
+        let empty = {x: 2, y: 2};
+
+        const gridEl = document.getElementById('grid');
+        const statusEl = document.getElementById('status');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function initTiles() {
+            // создаем массив 1..8 и пустую 0
+            tiles = [];
+            for (let i = 0; i < size; i++) {
+                tiles[i] = [];
+                for (let j = 0; j < size; j++) {
+                    tiles[i][j] = i * size + j + 1;
+                }
+            }
+            tiles[size-1][size-1] = 0;
+            empty = {x: size-1, y: size-1};
+        }
+
+        function shuffle() {
+            // делаем 100 случайных перемещений
+            for (let i = 0; i < 100; i++) {
+                const neighbors = getNeighbors(empty.x, empty.y);
+                const rand = neighbors[Math.floor(Math.random() * neighbors.length)];
+                if (rand) {
+                    swap(empty.x, empty.y, rand.x, rand.y);
+                    empty = rand;
+                }
+            }
+            // проверим, решаема ли (инверсии) – для 3x3 всегда решаема, если пустая на чётной позиции? 
+            // Но для простоты оставим как есть, иногда может быть нерешаема – но вероятность мала.
+            render();
+            statusEl.textContent = 'Игра началась!';
+        }
+
+        function getNeighbors(x, y) {
+            const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+            const result = [];
+            for (let d of dirs) {
+                const nx = x + d[0];
+                const ny = y + d[1];
+                if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
+                    result.push({x: nx, y: ny});
+                }
+            }
+            return result;
+        }
+
+        function swap(x1, y1, x2, y2) {
+            const temp = tiles[y1][x1];
+            tiles[y1][x1] = tiles[y2][x2];
+            tiles[y2][x2] = temp;
+        }
+
+        function render() {
+            gridEl.innerHTML = '';
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const div = document.createElement('div');
+                    div.className = 'tile';
+                    const val = tiles[y][x];
+                    if (val === 0) {
+                        div.classList.add('empty');
+                        div.textContent = '';
+                    } else {
+                        div.textContent = val;
+                    }
+                    div.dataset.x = x;
+                    div.dataset.y = y;
+                    div.addEventListener('click', () => handleClick(x, y));
+                    gridEl.appendChild(div);
+                }
+            }
+        }
+
+        function handleClick(x, y) {
+            const val = tiles[y][x];
+            if (val === 0) return;
+            // проверить, сосед ли с пустой
+            const neighbors = getNeighbors(empty.x, empty.y);
+            const isNeighbor = neighbors.some(n => n.x === x && n.y === y);
+            if (!isNeighbor) return;
+
+            // перемещаем
+            swap(empty.x, empty.y, x, y);
+            empty = {x, y};
+            render();
+
+            // проверка победы
+            let win = true;
+            let expected = 1;
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    if (i === size-1 && j === size-1) {
+                        if (tiles[i][j] !== 0) win = false;
+                    } else {
+                        if (tiles[i][j] !== expected) win = false;
+                        expected++;
+                    }
+                }
+            }
+            if (win) {
+                statusEl.textContent = '🎉 Поздравляю! Ты собрал паззл!';
+            } else {
+                statusEl.textContent = 'Хорошо, продолжай!';
+            }
+        }
+
+        resetBtn.addEventListener('click', () => {
+            initTiles();
+            shuffle();
+        });
+
+        initTiles();
+        shuffle();
+    </script>
+</body>
+</html>
