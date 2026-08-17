@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Саймон</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 20px 24px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+        .status {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            min-height: 30px;
+        }
+        .colors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 10px 0 16px;
+        }
+        .color-btn {
+            aspect-ratio: 1 / 1;
+            border: 3px solid #111;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: 0.1s;
+            box-shadow: 4px 4px 0 0 #111;
+            opacity: 0.8;
+        }
+        .color-btn:active { opacity: 0.4; transform: scale(0.95); }
+        .color-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        #c0 { background: #ef4444; }
+        #c1 { background: #3b82f6; }
+        #c2 { background: #22c55e; }
+        #c3 { background: #eab308; }
+        .level {
+            font-weight: 700;
+            font-size: 18px;
+            margin: 6px 0;
+        }
+        .reset-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 16px;
+            padding: 8px 24px;
+            border: 3px solid #111;
+            border-radius: 40px;
+            background: white;
+            color: #111;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            margin-top: 8px;
+        }
+        .reset-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>🎵 Саймон</h2>
+        <div class="status" id="status">Запомни последовательность</div>
+        <div class="level" id="level">Уровень 1</div>
+        <div class="colors" id="colorGrid">
+            <div class="color-btn" id="c0" data-idx="0"></div>
+            <div class="color-btn" id="c1" data-idx="1"></div>
+            <div class="color-btn" id="c2" data-idx="2"></div>
+            <div class="color-btn" id="c3" data-idx="3"></div>
+        </div>
+        <button class="reset-btn" id="resetBtn">🔄 Новая игра</button>
+    </div>
+    <script>
+        const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308'];
+        const btns = [document.getElementById('c0'), document.getElementById('c1'), document.getElementById('c2'), document.getElementById('c3')];
+        const statusEl = document.getElementById('status');
+        const levelEl = document.getElementById('level');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let sequence = [];
+        let playerIdx = 0;
+        let isPlaying = false;
+        let level = 1;
+
+        function flash(index) {
+            const btn = btns[index];
+            btn.style.opacity = '0.3';
+            setTimeout(() => { btn.style.opacity = '0.8'; }, 300);
+        }
+
+        function playSequence() {
+            isPlaying = true;
+            disableBtns(true);
+            statusEl.textContent = 'Смотри...';
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i >= sequence.length) {
+                    clearInterval(interval);
+                    statusEl.textContent = 'Твой ход!';
+                    isPlaying = false;
+                    disableBtns(false);
+                    playerIdx = 0;
+                    return;
+                }
+                flash(sequence[i]);
+                i++;
+            }, 600);
+        }
+
+        function disableBtns(disabled) {
+            btns.forEach(b => b.disabled = disabled);
+        }
+
+        function handleClick(idx) {
+            if (isPlaying) return;
+            flash(idx);
+            if (idx === sequence[playerIdx]) {
+                playerIdx++;
+                if (playerIdx === sequence.length) {
+                    // раунд пройден
+                    statusEl.textContent = '✅ Верно!';
+                    level++;
+                    levelEl.textContent = `Уровень ${level}`;
+                    setTimeout(() => {
+                        sequence.push(Math.floor(Math.random() * 4));
+                        playSequence();
+                    }, 700);
+                }
+            } else {
+                statusEl.textContent = '❌ Ошибка! Начни заново';
+                disableBtns(true);
+                setTimeout(() => {
+                    resetGame();
+                }, 1200);
+            }
+        }
+
+        function resetGame() {
+            sequence = [Math.floor(Math.random() * 4)];
+            level = 1;
+            levelEl.textContent = `Уровень 1`;
+            playerIdx = 0;
+            disableBtns(true);
+            statusEl.textContent = 'Новая игра';
+            setTimeout(() => {
+                playSequence();
+            }, 400);
+        }
+
+        btns.forEach((btn, idx) => {
+            btn.addEventListener('click', () => handleClick(idx));
+        });
+
+        resetBtn.addEventListener('click', resetGame);
+        resetGame();
+    </script>
+</body>
+</html>
