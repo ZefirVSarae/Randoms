@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>СловоМания</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 20px 24px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 8px 8px 0 0 #111;
+            text-align: center;
+        }
+        h2 {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+        .info {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: 18px;
+            margin-bottom: 12px;
+            padding: 0 4px;
+        }
+        .info span {
+            background: #f5f5f5;
+            padding: 4px 14px;
+            border-radius: 16px;
+            border: 2px solid #ddd;
+        }
+        .anagram {
+            font-size: 42px;
+            font-weight: 900;
+            letter-spacing: 6px;
+            padding: 20px 0;
+            background: #f5f5f5;
+            border-radius: 20px;
+            border: 3px solid #111;
+            margin: 10px 0 16px;
+            min-height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-all;
+            font-variant: small-caps;
+        }
+        .timer {
+            font-size: 32px;
+            font-weight: 900;
+            color: #111;
+            margin: 6px 0;
+        }
+        .timer.warning {
+            color: #ef4444;
+            animation: blink 0.5s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .input-area input {
+            flex: 1;
+            min-width: 160px;
+            font-family: inherit;
+            font-size: 22px;
+            font-weight: 800;
+            padding: 12px 16px;
+            border: 3px solid #111;
+            border-radius: 20px;
+            outline: none;
+            text-align: center;
+            background: white;
+            touch-action: manipulation;
+        }
+        .input-area input:focus {
+            background: #f0f0f0;
+        }
+        .input-area input:disabled {
+            opacity: 0.5;
+        }
+        .btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 20px;
+            padding: 12px 28px;
+            border: 3px solid #111;
+            border-radius: 40px;
+            background: #111;
+            color: white;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #555;
+            transition: 0.1s;
+            touch-action: manipulation;
+            min-height: 56px;
+            min-width: 120px;
+        }
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #555;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            transform: none;
+            box-shadow: 2px 2px 0 0 #888;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: white;
+            color: #111;
+            box-shadow: 4px 4px 0 0 #ccc;
+        }
+        .btn-secondary:active {
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+        .status {
+            font-weight: 700;
+            font-size: 18px;
+            min-height: 36px;
+            margin: 8px 0 4px;
+            color: #333;
+        }
+        .status.correct { color: #22c55e; }
+        .status.wrong { color: #ef4444; }
+        .footer-note {
+            margin-top: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #999;
+            border-top: 2px solid #eee;
+            padding-top: 12px;
+            letter-spacing: 0.5px;
+        }
+        .footer-note span {
+            background: #f5f5f5;
+            padding: 2px 10px;
+            border-radius: 12px;
+        }
+        @media (max-width: 480px) {
+            .game { padding: 16px 14px; }
+            h2 { font-size: 22px; }
+            .anagram { font-size: 32px; letter-spacing: 4px; padding: 16px 0; min-height: 70px; }
+            .info { font-size: 16px; }
+            .input-area input { font-size: 18px; padding: 10px 12px; min-width: 120px; }
+            .btn { font-size: 18px; padding: 10px 20px; min-height: 48px; min-width: 100px; }
+            .timer { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>📖 СловоМания</h2>
+        <div class="info">
+            <span>✅ <span id="score">0</span></span>
+            <span>⏱️ <span id="timerDisplay" class="timer">10</span>с</span>
+        </div>
+        <div class="anagram" id="anagram">????</div>
+        <div class="input-area">
+            <input type="text" id="wordInput" placeholder="введите слово" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+            <button class="btn" id="checkBtn">Проверить</button>
+        </div>
+        <div class="status" id="status">Введите слово и нажмите Проверить</div>
+        <button class="btn btn-secondary" id="resetBtn">🔄 Новая игра</button>
+        <div class="footer-note">
+            <span>Оригинал сделан Xyrvv</span>
+        </div>
+    </div>
+    <script>
+        // === 50 РУССКИХ СЛОВ (существительные, 4-8 букв) ===
+        const WORDS = [
+            "стол", "стул", "окно", "дверь", "лампа", "книга", "ручка", "карандаш",
+            "телефон", "компьютер", "клавиатура", "мышь", "монитор", "принтер",
+            "сканер", "колонки", "наушники", "микрофон", "камера", "фото",
+            "телевизор", "холодильник", "плита", "чайник", "кофеварка", "тостер",
+            "блендер", "миксер", "утюг", "пылесос", "стиралка", "сушилка",
+            "кондиционер", "вентилятор", "обогреватель", "кровать", "диван",
+            "кресло", "шкаф", "комод", "зеркало", "ковер", "люстра", "торшер",
+            "будильник", "часы", "календарь", "ежедневник", "блокнот", "тетрадь"
+        ];
+
+        // === СОСТОЯНИЕ ===
+        let currentWord = '';
+        let shuffledWord = '';
+        let score = 0;
+        let timeLeft = 10;
+        let timerId = null;
+        let isPlaying = false;
+        let isWaiting = false; // пауза после ответа
+
+        const anagramEl = document.getElementById('anagram');
+        const scoreEl = document.getElementById('score');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const wordInput = document.getElementById('wordInput');
+        const checkBtn = document.getElementById('checkBtn');
+        const statusEl = document.getElementById('status');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+        function shuffleString(str) {
+            const arr = str.split('');
+            // Перемешиваем, пока не получим отличное от исходного (или хотя бы 10 попыток)
+            for (let attempt = 0; attempt < 20; attempt++) {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                const shuffled = arr.join('');
+                if (shuffled !== str) return shuffled;
+            }
+            // Если всё равно совпало (маловероятно), меняем местами первые две буквы
+            if (arr.length >= 2) {
+                [arr[0], arr[1]] = [arr[1], arr[0]];
+            }
+            return arr.join('');
+        }
+
+        function getRandomWord() {
+            return WORDS[Math.floor(Math.random() * WORDS.length)];
+        }
+
+        // === ОСНОВНАЯ ЛОГИКА ===
+        function startRound() {
+            if (isWaiting) return;
+            // Выбираем новое слово
+            currentWord = getRandomWord();
+            shuffledWord = shuffleString(currentWord);
+            anagramEl.textContent = shuffledWord.toUpperCase();
+            wordInput.value = '';
+            wordInput.disabled = false;
+            checkBtn.disabled = false;
+            wordInput.focus();
+            statusEl.textContent = 'Введите слово';
+            statusEl.className = 'status';
+            timeLeft = 10;
+            timerDisplay.textContent = timeLeft;
+            timerDisplay.className = 'timer';
+            isPlaying = true;
+
+            // Запускаем таймер
+            if (timerId) clearInterval(timerId);
+            timerId = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = timeLeft;
+                if (timeLeft <= 3) timerDisplay.classList.add('warning');
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    timerId = null;
+                    // Время вышло
+                    isPlaying = false;
+                    wordInput.disabled = true;
+                    checkBtn.disabled = true;
+                    statusEl.textContent = `⏰ Время вышло! Правильно: ${currentWord}`;
+                    statusEl.className = 'status wrong';
+                    // Показываем правильное слово
+                    anagramEl.textContent = currentWord.toUpperCase();
+                    // Переход к следующему через 1.2 секунды
+                    isWaiting = true;
+                    setTimeout(() => {
+                        isWaiting = false;
+                        startRound();
+                    }, 1200);
+                }
+            }, 1000);
+        }
+
+        function checkAnswer() {
+            if (!isPlaying || isWaiting) return;
+            const userAnswer = wordInput.value.trim().toLowerCase();
+            if (userAnswer === '') {
+                statusEl.textContent = '✏️ Введите слово!';
+                statusEl.className = 'status';
+                return;
+            }
+            if (userAnswer === currentWord.toLowerCase()) {
+                // Правильно!
+                isPlaying = false;
+                clearInterval(timerId);
+                timerId = null;
+                score++;
+                scoreEl.textContent = score;
+                statusEl.textContent = '✅ Верно! +1 очко';
+                statusEl.className = 'status correct';
+                wordInput.disabled = true;
+                checkBtn.disabled = true;
+                anagramEl.textContent = currentWord.toUpperCase();
+                // Переход к следующему
+                isWaiting = true;
+                setTimeout(() => {
+                    isWaiting = false;
+                    startRound();
+                }, 1000);
+            } else {
+                // Неправильно
+                statusEl.textContent = `❌ Неправильно! Попробуйте ещё`;
+                statusEl.className = 'status wrong';
+                wordInput.value = '';
+                wordInput.focus();
+                // Можно дать дополнительную попытку, но таймер продолжается
+            }
+        }
+
+        // === СБРОС ИГРЫ ===
+        function resetGame() {
+            if (timerId) {
+                clearInterval(timerId);
+                timerId = null;
+            }
+            isPlaying = false;
+            isWaiting = false;
+            score = 0;
+            scoreEl.textContent = '0';
+            wordInput.disabled = true;
+            checkBtn.disabled = true;
+            anagramEl.textContent = '???';
+            timerDisplay.textContent = '10';
+            timerDisplay.className = 'timer';
+            statusEl.textContent = 'Нажми "Новая игра" для старта';
+            statusEl.className = 'status';
+            wordInput.value = '';
+            // Запускаем первый раунд через паузу
+            setTimeout(() => {
+                startRound();
+            }, 300);
+        }
+
+        // === СОБЫТИЯ ===
+        checkBtn.addEventListener('click', checkAnswer);
+        wordInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkAnswer();
+            }
+        });
+        resetBtn.addEventListener('click', resetGame);
+
+        // СТАРТ
+        resetGame();
+    </script>
+</body>
+</html>
