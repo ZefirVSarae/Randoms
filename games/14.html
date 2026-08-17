@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>21 (Blackjack)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 16px 20px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 { font-size: 26px; font-weight: 900; margin-bottom: 6px; }
+        .hands {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 10px 0;
+        }
+        .hand {
+            background: #f5f5f5;
+            border-radius: 16px;
+            padding: 10px;
+            border: 2px solid #ddd;
+        }
+        .hand .title { font-weight: 800; font-size: 16px; }
+        .hand .cards {
+            font-size: 28px;
+            letter-spacing: 4px;
+            word-break: break-all;
+            min-height: 40px;
+        }
+        .hand .score { font-weight: 800; font-size: 18px; }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        .btn {
+            font-family: inherit; font-weight: 800; font-size: 18px;
+            padding: 8px 24px;
+            border: 3px solid #111; border-radius: 40px;
+            background: white; color: #111; cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+        }
+        .btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 0 #ccc; }
+        .btn:disabled { opacity: 0.4; transform: none; box-shadow: 2px 2px 0 0 #ddd; cursor: not-allowed; }
+        .status { font-weight: 700; min-height: 28px; }
+        .reset-btn {
+            font-family: inherit; font-weight: 800; font-size: 16px;
+            padding: 6px 20px; border: 3px solid #111; border-radius: 40px;
+            background: white; color: #111; cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc; transition: 0.1s;
+            margin-top: 4px;
+        }
+        .reset-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 0 #ccc; }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>🃏 21</h2>
+        <div class="hands">
+            <div class="hand">
+                <div class="title">Дилер</div>
+                <div class="cards" id="dealerCards"></div>
+                <div class="score" id="dealerScore">0</div>
+            </div>
+            <div class="hand">
+                <div class="title">Вы</div>
+                <div class="cards" id="playerCards"></div>
+                <div class="score" id="playerScore">0</div>
+            </div>
+        </div>
+        <div class="buttons">
+            <button class="btn" id="hitBtn">Взять</button>
+            <button class="btn" id="standBtn">Стоп</button>
+        </div>
+        <div class="status" id="status">Нажми "Взять"</div>
+        <button class="reset-btn" id="resetBtn">🔄 Новая игра</button>
+    </div>
+    <script>
+        const deck = [];
+        const suits = ['♠','♥','♦','♣'];
+        const ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+        let playerHand = [], dealerHand = [];
+        let gameActive = false;
+
+        const dealerCardsEl = document.getElementById('dealerCards');
+        const dealerScoreEl = document.getElementById('dealerScore');
+        const playerCardsEl = document.getElementById('playerCards');
+        const playerScoreEl = document.getElementById('playerScore');
+        const statusEl = document.getElementById('status');
+        const hitBtn = document.getElementById('hitBtn');
+        const standBtn = document.getElementById('standBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function createDeck() {
+            deck.length = 0;
+            for (let suit of suits) {
+                for (let rank of ranks) {
+                    deck.push({rank, suit});
+                }
+            }
+            // перемешиваем
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function drawCard() {
+            return deck.pop();
+        }
+
+        function cardValue(card) {
+            if (card.rank === 'A') return 11;
+            if (['J','Q','K'].includes(card.rank)) return 10;
+            return parseInt(card.rank);
+        }
+
+        function handTotal(hand) {
+            let total = hand.reduce((sum, c) => sum + cardValue(c), 0);
+            let aces = hand.filter(c => c.rank === 'A').length;
+            while (total > 21 && aces > 0) {
+                total -= 10;
+                aces--;
+            }
+            return total;
+        }
+
+        function render() {
+            // игрок
+            playerCardsEl.textContent = playerHand.map(c => c.rank + c.suit).join(' ');
+            const pScore = handTotal(playerHand);
+            playerScoreEl.textContent = pScore;
+
+            // дилер
+            if (gameActive) {
+                // показываем только первую карту
+                if (dealerHand.length > 0) {
+                    const visible = dealerHand[0];
+                    dealerCardsEl.textContent = visible.rank + visible.suit + ' ?';
+                    dealerScoreEl.textContent = cardValue(visible);
+                }
+            } else {
+                dealerCardsEl.textContent = dealerHand.map(c => c.rank + c.suit).join(' ');
+                dealerScoreEl.textContent = handTotal(dealerHand);
+            }
+        }
+
+        function startGame() {
+            createDeck();
+            playerHand = [drawCard(), drawCard()];
+            dealerHand = [drawCard(), drawCard()];
+            gameActive = true;
+            hitBtn.disabled = false;
+            standBtn.disabled = false;
+            statusEl.textContent = 'Ваш ход';
+            render();
+
+            // проверка на блэкджек
+            if (handTotal(playerHand) === 21) {
+                stand();
+            }
+        }
+
+        function hit() {
+            if (!gameActive) return;
+            playerHand.push(drawCard());
+            render();
+            const total = handTotal(playerHand);
+            if (total > 21) {
+                statusEl.textContent = '😵 Перебор! Вы проиграли.';
+                gameActive = false;
+                hitBtn.disabled = true;
+                standBtn.disabled = true;
+                // показать карты дилера
+                dealerCardsEl.textContent = dealerHand.map(c => c.rank + c.suit).join(' ');
+                dealerScoreEl.textContent = handTotal(dealerHand);
+            }
+        }
+
+        function stand() {
+            if (!gameActive) return;
+            gameActive = false;
+            hitBtn.disabled = true;
+            standBtn.disabled = true;
+            // дилер берёт до 17
+            while (handTotal(dealerHand) < 17) {
+                dealerHand.push(drawCard());
+            }
+            render();
+            const playerTotal = handTotal(playerHand);
+            const dealerTotal = handTotal(dealerHand);
+            dealerCardsEl.textContent = dealerHand.map(c => c.rank + c.suit).join(' ');
+            dealerScoreEl.textContent = dealerTotal;
+
+            let msg = '';
+            if (playerTotal > 21) msg = 'Перебор у вас. Поражение.';
+            else if (dealerTotal > 21) msg = 'У дилера перебор! Вы выиграли! 🎉';
+            else if (playerTotal > dealerTotal) msg = 'Вы выиграли! 🎉';
+            else if (playerTotal === dealerTotal) msg = 'Ничья.';
+            else msg = 'Дилер выиграл.';
+            statusEl.textContent = msg;
+        }
+
+        resetBtn.addEventListener('click', startGame);
+        hitBtn.addEventListener('click', hit);
+        standBtn.addEventListener('click', stand);
+
+        startGame();
+    </script>
+</body>
+</html>
