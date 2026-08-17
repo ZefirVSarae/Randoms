@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Монетка</title>
+    <title>Угадай число</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
@@ -32,44 +32,42 @@
             text-align: center;
         }
         h2 { font-size: 28px; font-weight: 900; margin-bottom: 4px; }
-        .coin {
-            font-size: 120px;
-            line-height: 1.2;
-            margin: 20px 0;
-            transition: transform 0.2s;
-            display: inline-block;
-        }
-        .coin.flip {
-            animation: flip 0.6s ease-in-out;
-        }
-        @keyframes flip {
-            0% { transform: rotateY(0deg) scale(1); }
-            50% { transform: rotateY(180deg) scale(1.2); }
-            100% { transform: rotateY(360deg) scale(1); }
-        }
-        .result {
-            font-size: 24px;
-            font-weight: 800;
-            min-height: 50px;
-        }
-        .stats {
-            display: flex;
-            justify-content: space-around;
-            font-weight: 700;
+        .info {
             font-size: 18px;
+            font-weight: 700;
+            margin: 8px 0;
+        }
+        .range {
+            font-size: 20px;
+            font-weight: 800;
+            color: #555;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
             margin: 12px 0;
         }
-        .stats span {
-            background: #f5f5f5;
-            padding: 4px 16px;
-            border-radius: 16px;
-            border: 2px solid #ddd;
+        .input-area input {
+            font-family: inherit;
+            font-size: 24px;
+            font-weight: 800;
+            width: 100px;
+            padding: 10px 12px;
+            border: 3px solid #111;
+            border-radius: 20px;
+            text-align: center;
+            outline: none;
+            background: white;
         }
+        .input-area input:focus { background: #f0f0f0; }
+        .input-area input:disabled { opacity: 0.5; }
         .btn {
             font-family: inherit;
             font-weight: 800;
             font-size: 20px;
-            padding: 12px 36px;
+            padding: 10px 24px;
             border: 3px solid #111;
             border-radius: 40px;
             background: #111;
@@ -78,101 +76,100 @@
             box-shadow: 4px 4px 0 0 #555;
             transition: 0.1s;
             touch-action: manipulation;
-            min-height: 56px;
+            min-height: 52px;
         }
         .btn:active {
             transform: translate(2px, 2px);
             box-shadow: 2px 2px 0 0 #555;
         }
-        .btn:disabled {
-            opacity: 0.4;
-            transform: none;
-            box-shadow: 2px 2px 0 0 #888;
-            cursor: not-allowed;
-        }
+        .btn:disabled { opacity: 0.4; transform: none; box-shadow: 2px 2px 0 0 #888; cursor: not-allowed; }
         .btn-secondary {
             background: white;
             color: #111;
             box-shadow: 4px 4px 0 0 #ccc;
-            margin-top: 12px;
+            margin-top: 8px;
             font-size: 16px;
-            padding: 10px 28px;
+            padding: 8px 24px;
         }
         .btn-secondary:active { box-shadow: 2px 2px 0 0 #ccc; }
+        .status {
+            font-weight: 700;
+            font-size: 20px;
+            min-height: 40px;
+            margin: 8px 0;
+        }
+        .attempts {
+            font-weight: 700;
+            color: #666;
+            font-size: 16px;
+        }
         @media (max-width: 480px) {
-            .coin { font-size: 80px; }
+            .input-area input { width: 80px; font-size: 20px; }
         }
     </style>
 </head>
 <body>
     <div class="game">
-        <h2>🪙 Монетка</h2>
-        <div class="coin" id="coin">🪙</div>
-        <div class="result" id="result">Нажми "Бросить"</div>
-        <button class="btn" id="flipBtn">Бросить</button>
-        <div class="stats">
-            <span>🦅 Орёл: <span id="heads">0</span></span>
-            <span>🦅 Решка: <span id="tails">0</span></span>
+        <h2>🎯 Угадай число</h2>
+        <div class="range">от 1 до 10</div>
+        <div class="input-area">
+            <input type="number" id="guessInput" min="1" max="10" placeholder="1–10" />
+            <button class="btn" id="checkBtn">Проверить</button>
         </div>
-        <button class="btn btn-secondary" id="resetBtn">🔄 Сбросить счёт</button>
+        <div class="status" id="status">Введите число</div>
+        <div class="attempts" id="attempts">Попыток: 0</div>
+        <button class="btn btn-secondary" id="resetBtn">🔄 Новая игра</button>
     </div>
     <script>
-        const coinEl = document.getElementById('coin');
-        const resultEl = document.getElementById('result');
-        const flipBtn = document.getElementById('flipBtn');
+        let secret = Math.floor(Math.random() * 10) + 1;
+        let attempts = 0;
+        let gameOver = false;
+
+        const guessInput = document.getElementById('guessInput');
+        const checkBtn = document.getElementById('checkBtn');
         const resetBtn = document.getElementById('resetBtn');
-        const headsEl = document.getElementById('heads');
-        const tailsEl = document.getElementById('tails');
+        const statusEl = document.getElementById('status');
+        const attemptsEl = document.getElementById('attempts');
 
-        let heads = 0, tails = 0;
-        let isFliping = false;
-
-        function flipCoin() {
-            if (isFliping) return;
-            isFliping = true;
-            flipBtn.disabled = true;
-
-            coinEl.classList.remove('flip');
-            void coinEl.offsetWidth; // trigger reflow
-            coinEl.classList.add('flip');
-
-            const result = Math.random() < 0.5 ? 'heads' : 'tails';
-            setTimeout(() => {
-                if (result === 'heads') {
-                    coinEl.textContent = '🦅';
-                    resultEl.textContent = 'Орёл!';
-                    heads++;
-                    headsEl.textContent = heads;
-                } else {
-                    coinEl.textContent = '🦅?'; // Решка — используем другой символ
-                    coinEl.textContent = '🪙';
-                    // Лучше использовать разные эмодзи для орла и решки
-                    coinEl.textContent = '🪙'; // пока оставим
-                    resultEl.textContent = 'Решка!';
-                    tails++;
-                    tailsEl.textContent = tails;
-                }
-                // Используем отдельные эмодзи для наглядности
-                if (result === 'heads') {
-                    coinEl.textContent = '🦅';
-                } else {
-                    coinEl.textContent = '🪙';
-                }
-                isFliping = false;
-                flipBtn.disabled = false;
-            }, 600);
+        function checkGuess() {
+            if (gameOver) return;
+            const val = parseInt(guessInput.value);
+            if (isNaN(val) || val < 1 || val > 10) {
+                statusEl.textContent = '⚠️ Введите число от 1 до 10';
+                return;
+            }
+            attempts++;
+            attemptsEl.textContent = `Попыток: ${attempts}`;
+            if (val === secret) {
+                statusEl.textContent = '🎉 Угадал! Поздравляю!';
+                gameOver = true;
+                guessInput.disabled = true;
+                checkBtn.disabled = true;
+            } else if (val < secret) {
+                statusEl.textContent = '📈 Больше';
+            } else {
+                statusEl.textContent = '📉 Меньше';
+            }
+            guessInput.value = '';
+            guessInput.focus();
         }
 
-        resetBtn.addEventListener('click', () => {
-            heads = 0;
-            tails = 0;
-            headsEl.textContent = '0';
-            tailsEl.textContent = '0';
-            coinEl.textContent = '🪙';
-            resultEl.textContent = 'Счёт сброшен';
-        });
+        function resetGame() {
+            secret = Math.floor(Math.random() * 10) + 1;
+            attempts = 0;
+            gameOver = false;
+            guessInput.disabled = false;
+            checkBtn.disabled = false;
+            guessInput.value = '';
+            statusEl.textContent = 'Новая игра! Введи число';
+            attemptsEl.textContent = 'Попыток: 0';
+            guessInput.focus();
+        }
 
-        flipBtn.addEventListener('click', flipCoin);
+        checkBtn.addEventListener('click', checkGuess);
+        guessInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkGuess(); });
+        resetBtn.addEventListener('click', resetGame);
+        resetGame();
     </script>
 </body>
 </html>
