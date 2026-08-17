@@ -172,6 +172,67 @@
         let canShoot = true;
         let touchId = null;
 
+        // === ОТРИСОВКА ПУНКТИРНОЙ ТРАЕКТОРИИ ===
+        function drawTrajectory() {
+            if (!canShoot) return;
+            
+            const startX = ball.x;
+            const startY = ball.y;
+            const powerFactor = power * 12 || 0.1;
+            const vx = Math.cos(angle * Math.PI / 180) * powerFactor;
+            const vy = Math.sin(angle * Math.PI / 180) * powerFactor;
+            
+            // Рисуем пунктирную траекторию (10 точек)
+            ctx.save();
+            ctx.setLineDash([4, 6]);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 4;
+            
+            ctx.beginPath();
+            let px = startX, py = startY;
+            let pvx = vx, pvy = vy;
+            ctx.moveTo(px, py);
+            
+            for (let i = 0; i < 12; i++) {
+                pvy += GRAVITY * 2;
+                px += pvx * 2;
+                py += pvy * 2;
+                pvx *= FRICTION;
+                
+                if (py > H) break;
+                if (px < 0 || px > W) break;
+                
+                ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+            
+            // Рисуем точки на траектории
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.shadowBlur = 0;
+            
+            px = startX; py = startY;
+            pvx = vx; pvy = vy;
+            
+            for (let i = 0; i < 12; i++) {
+                pvy += GRAVITY * 2;
+                px += pvx * 2;
+                py += pvy * 2;
+                pvx *= FRICTION;
+                
+                if (py > H) break;
+                if (px < 0 || px > W) break;
+                
+                ctx.beginPath();
+                ctx.arc(px, py, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+
         function draw() {
             ctx.clearRect(0, 0, W, H);
             
@@ -200,19 +261,8 @@
             ctx.textBaseline = 'middle';
             ctx.fillText('🏀', ball.x, ball.y + 2);
 
-            // прицел
-            if (canShoot && !charging) {
-                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
-                const endX = ball.x + Math.cos(angle * Math.PI / 180) * 80;
-                const endY = ball.y + Math.sin(angle * Math.PI / 180) * 80;
-                ctx.beginPath();
-                ctx.moveTo(ball.x, ball.y);
-                ctx.lineTo(endX, endY);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
+            // === ТРАЕКТОРИЯ (всегда видна) ===
+            drawTrajectory();
         }
 
         function shoot() {
@@ -308,6 +358,7 @@
             charging = true;
             power = 0;
             statusEl.textContent = '💪 Заряжаем...';
+            draw();
         });
 
         canvas.addEventListener('mousemove', (e) => {
@@ -346,8 +397,6 @@
 
         // === ТЕЛЕФОН ===
         let touchStartTime = 0;
-        let touchStartX = 0;
-        let touchStartY = 0;
         let isTouching = false;
 
         canvas.addEventListener('touchstart', (e) => {
@@ -356,13 +405,12 @@
             
             const touch = e.touches[0];
             touchStartTime = Date.now();
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
             isTouching = true;
             charging = true;
             power = 0;
             statusEl.textContent = '💪 Заряжаем...';
             touchId = touch.identifier;
+            draw();
         }, { passive: false });
 
         canvas.addEventListener('touchmove', (e) => {
@@ -382,7 +430,6 @@
             const touchX = (touch.clientX - rect.left) / rect.width * W;
             const touchY = (touch.clientY - rect.top) / rect.height * H;
             
-            // Угол от мяча до пальца
             const dx = touchX - ball.x;
             const dy = touchY - ball.y;
             angle = Math.atan2(dy, dx) * 180 / Math.PI;
