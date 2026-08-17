@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Виселица</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 20px 24px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+        .word {
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            margin: 12px 0;
+            word-break: break-all;
+        }
+        .status {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            min-height: 30px;
+        }
+        .letters {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .letter-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 20px;
+            width: 42px;
+            height: 42px;
+            border: 2px solid #111;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: 0.1s;
+            box-shadow: 3px 3px 0 0 #ccc;
+            text-transform: uppercase;
+        }
+        .letter-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 0 #ccc; }
+        .letter-btn:disabled { opacity: 0.3; transform: none; box-shadow: 1px 1px 0 0 #ddd; cursor: not-allowed; }
+        .attempts {
+            font-weight: 700;
+            font-size: 18px;
+            margin: 6px 0;
+        }
+        .reset-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 16px;
+            padding: 8px 24px;
+            border: 3px solid #111;
+            border-radius: 40px;
+            background: white;
+            color: #111;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            margin-top: 8px;
+        }
+        .reset-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>🪢 Виселица</h2>
+        <div class="status" id="status">Угадай слово</div>
+        <div class="word" id="wordDisplay"></div>
+        <div class="attempts" id="attempts">Ошибок: 0 / 6</div>
+        <div class="letters" id="letterContainer"></div>
+        <button class="reset-btn" id="resetBtn">🔄 Новое слово</button>
+    </div>
+    <script>
+        const words = ['КОТ', 'СОБАКА', 'СЛОН', 'ТИГР', 'МЫШЬ', 'ЗЕБРА', 'ВОЛК', 'ЛИСА', 'МЕДВЕДЬ', 'ЗАЯЦ'];
+        let currentWord = '';
+        let guessed = [];
+        let attempts = 0;
+        const maxAttempts = 6;
+        let gameOver = false;
+
+        const wordDisplay = document.getElementById('wordDisplay');
+        const statusEl = document.getElementById('status');
+        const attemptsEl = document.getElementById('attempts');
+        const container = document.getElementById('letterContainer');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function initGame() {
+            currentWord = words[Math.floor(Math.random() * words.length)].toUpperCase();
+            guessed = new Array(currentWord.length).fill(false);
+            attempts = 0;
+            gameOver = false;
+            renderWord();
+            renderLetters();
+            updateStatus();
+            attemptsEl.textContent = `Ошибок: ${attempts} / ${maxAttempts}`;
+        }
+
+        function renderWord() {
+            let display = '';
+            for (let i = 0; i < currentWord.length; i++) {
+                display += guessed[i] ? currentWord[i] : '_';
+                display += ' ';
+            }
+            wordDisplay.textContent = display.trim();
+        }
+
+        function renderLetters() {
+            container.innerHTML = '';
+            const alphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'.split('');
+            alphabet.forEach(letter => {
+                const btn = document.createElement('button');
+                btn.className = 'letter-btn';
+                btn.textContent = letter;
+                btn.dataset.letter = letter;
+                btn.addEventListener('click', () => handleLetter(letter, btn));
+                container.appendChild(btn);
+            });
+        }
+
+        function handleLetter(letter, btn) {
+            if (gameOver) return;
+            btn.disabled = true;
+            const isGuessed = currentWord.includes(letter);
+            if (!isGuessed) {
+                attempts++;
+                attemptsEl.textContent = `Ошибок: ${attempts} / ${maxAttempts}`;
+                if (attempts >= maxAttempts) {
+                    gameOver = true;
+                    statusEl.textContent = `💀 Проиграл! Слово: ${currentWord}`;
+                    disableAllButtons();
+                    return;
+                }
+                updateStatus();
+                renderWord();
+            } else {
+                for (let i = 0; i < currentWord.length; i++) {
+                    if (currentWord[i] === letter) guessed[i] = true;
+                }
+                renderWord();
+                if (guessed.every(g => g === true)) {
+                    gameOver = true;
+                    statusEl.textContent = '🎉 Победа! Ты угадал!';
+                    disableAllButtons();
+                    return;
+                }
+                updateStatus();
+            }
+        }
+
+        function disableAllButtons() {
+            document.querySelectorAll('.letter-btn').forEach(b => b.disabled = true);
+        }
+
+        function updateStatus() {
+            if (!gameOver) statusEl.textContent = 'Продолжай!';
+        }
+
+        resetBtn.addEventListener('click', () => {
+            initGame();
+            document.querySelectorAll('.letter-btn').forEach(b => b.disabled = false);
+        });
+
+        initGame();
+    </script>
+</body>
+</html>
