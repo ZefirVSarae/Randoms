@@ -58,7 +58,6 @@
             display: block;
             background: white;
         }
-        /* Прелоадер */
         .preloader {
             position: absolute;
             top: 0;
@@ -154,12 +153,10 @@
     <div class="subtitle">рандомный прикол каждые 30-60 минут</div>
 
     <div class="game-box" id="app-container">
-        <!-- Прелоадер -->
         <div class="preloader" id="preloader">
             <div class="spinner"></div>
             <div class="text">Загрузка игр...</div>
         </div>
-        <!-- Сюда будет iframe -->
     </div>
 
     <div class="timer">
@@ -184,6 +181,7 @@ let TOTAL_GAMES = 0;
 let gameList = [];
 let currentSlot = -1;
 let gameCache = {};
+let hasReloaded = false; // защита от многократной перезагрузки
 
 // === ПОЛУЧЕНИЕ СПИСКА ИГР (с кешем) ===
 async function fetchGames() {
@@ -196,7 +194,6 @@ async function fetchGames() {
             gameList = data;
             TOTAL_GAMES = data.length;
             updateCounter();
-            console.log(`📦 Загружено из кеша: ${TOTAL_GAMES} игр`);
             return data;
         } catch (e) { /* кеш битый */ }
     }
@@ -225,11 +222,9 @@ async function fetchGames() {
         TOTAL_GAMES = games.length;
         sessionStorage.setItem(cacheKey, JSON.stringify(games));
         updateCounter();
-        console.log(`✅ Загружено ${TOTAL_GAMES} игр (API)`);
         return games;
         
     } catch (e) {
-        console.warn('⚠️ API ошибка, пробуем fallback');
         return await fetchGamesFallback();
     }
 }
@@ -251,11 +246,9 @@ async function fetchGamesFallback() {
         gameList = found;
         TOTAL_GAMES = found.length;
         updateCounter();
-        console.log(`{TOTAL_GAMES} игр`);
         return found;
     }
     
-    // Локальный список (всегда рабочий)
     const localGames = [];
     for (let i = 1; i <= 25; i++) {
         localGames.push({ number: i, name: `${i}.html` });
@@ -263,7 +256,6 @@ async function fetchGamesFallback() {
     gameList = localGames;
     TOTAL_GAMES = 25;
     updateCounter();
-    console.log(`📁 Используем локальный список: ${TOTAL_GAMES} игр`);
     return gameList;
 }
 
@@ -278,19 +270,15 @@ function loadGame(gameNumber) {
     const container = document.getElementById('app-container');
     const preloader = document.getElementById('preloader');
     
-    // Показываем прелоадер
     preloader.classList.remove('hidden');
     
-    // Проверяем кеш iframe
     const cacheKey = `game_${gameNumber}`;
     if (gameCache[cacheKey]) {
-        // Если уже загружена — показываем мгновенно
         container.innerHTML = gameCache[cacheKey];
         preloader.classList.add('hidden');
         return;
     }
     
-    // Создаём iframe
     const iframe = document.createElement('iframe');
     iframe.src = `${GAMES_FOLDER}/${gameNumber}.html`;
     iframe.title = `Игра ${gameNumber}`;
@@ -302,18 +290,14 @@ function loadGame(gameNumber) {
     iframe.style.display = 'block';
     iframe.style.background = 'white';
     
-    // Очищаем контейнер и добавляем iframe
     container.innerHTML = '';
     container.appendChild(iframe);
     
-    // Когда iframe загрузился — прячем прелоадер
     iframe.addEventListener('load', () => {
         preloader.classList.add('hidden');
-        // Сохраняем в кеш
         gameCache[cacheKey] = container.innerHTML;
     });
     
-    // Таймаут на случай, если iframe завис
     setTimeout(() => {
         preloader.classList.add('hidden');
     }, 5000);
@@ -354,6 +338,13 @@ function updatePortal() {
     const s = String(remaining % 60).padStart(2, '0');
     document.getElementById('timer').textContent = `${h}:${m}:${s}`;
     
+    // Если время вышло — перезагружаем страницу (только один раз)
+    if (remaining <= 0 && !hasReloaded) {
+        hasReloaded = true;
+        location.reload();
+        return;
+    }
+    
     // Смена игры
     if (currentSlot !== slot.idx) {
         currentSlot = slot.idx;
@@ -388,7 +379,6 @@ function preloadNextGame() {
     const nextIdx = (safeIdx + 1) % TOTAL_GAMES;
     const gameNum = gameList[nextIdx]?.number || nextIdx + 1;
     
-    // Предзагружаем следующую игру в фоне
     setTimeout(() => {
         const cacheKey = `game_${gameNum}`;
         if (!gameCache[cacheKey]) {
@@ -409,15 +399,12 @@ async function init() {
     setInterval(preloadNextGame, 10000);
 }
 
-// Запускаем мгновенно
 init();
 
 // Обновляем список при фокусе
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) fetchGames();
 });
-
-console.log('🎮 Randoms v3.0 — быстрая загрузка');
 </script>
 </body>
 </html>
