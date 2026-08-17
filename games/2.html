@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кликер</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 24px 28px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+        }
+        .info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 20px;
+            font-weight: 800;
+            margin: 10px 0 20px;
+        }
+        .click-btn {
+            font-family: inherit;
+            font-weight: 900;
+            font-size: 28px;
+            padding: 20px 40px;
+            border: 4px solid #111;
+            border-radius: 60px;
+            background: #facc15;
+            color: #111;
+            cursor: pointer;
+            transition: 0.1s;
+            box-shadow: 6px 6px 0 0 #111;
+            width: 100%;
+            max-width: 280px;
+            margin: 0 auto 20px;
+        }
+        .click-btn:active {
+            transform: scale(0.96);
+            box-shadow: 3px 3px 0 0 #111;
+        }
+        .click-btn:disabled {
+            opacity: 0.5;
+            transform: none;
+            box-shadow: 3px 3px 0 0 #555;
+            cursor: not-allowed;
+        }
+        .result {
+            font-size: 22px;
+            font-weight: 700;
+            min-height: 40px;
+        }
+        .reset-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 18px;
+            padding: 10px 28px;
+            border: 3px solid #111;
+            border-radius: 40px;
+            background: white;
+            color: #111;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            margin-top: 12px;
+        }
+        .reset-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+        .timer {
+            font-size: 32px;
+            font-weight: 900;
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>⚡ Кликер</h2>
+        <div class="info">
+            <span>👆 <span id="clicks">0</span></span>
+            <span class="timer" id="timer">10</span>
+        </div>
+        <button class="click-btn" id="clickBtn">Клик!</button>
+        <div class="result" id="result"></div>
+        <button class="reset-btn" id="resetBtn">🔄 Сыграть снова</button>
+    </div>
+    <script>
+        let clicks = 0;
+        let timeLeft = 10;
+        let active = false;
+        let timerId = null;
+
+        const clicksEl = document.getElementById('clicks');
+        const timerEl = document.getElementById('timer');
+        const clickBtn = document.getElementById('clickBtn');
+        const resultEl = document.getElementById('result');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function startGame() {
+            clicks = 0;
+            timeLeft = 10;
+            active = true;
+            clicksEl.textContent = '0';
+            timerEl.textContent = '10';
+            resultEl.textContent = '';
+            clickBtn.disabled = false;
+            clickBtn.style.background = '#facc15';
+            if (timerId) clearInterval(timerId);
+            timerId = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    timerId = null;
+                    active = false;
+                    clickBtn.disabled = true;
+                    clickBtn.style.background = '#ccc';
+                    resultEl.textContent = `🏆 ${clicks} кликов!`;
+                }
+            }, 1000);
+        }
+
+        clickBtn.addEventListener('click', () => {
+            if (!active) return;
+            clicks++;
+            clicksEl.textContent = clicks;
+        });
+
+        resetBtn.addEventListener('click', startGame);
+        startGame(); // автозапуск
+    </script>
+</body>
+</html>
