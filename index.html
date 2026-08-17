@@ -1,340 +1,423 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Randoms</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
     <style>
-        /* Отключаем Jekyll */
-        /* stylelint-disable */
-        body, button, input, select, textarea {
-            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif !important;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
         }
-        @keyframes pulse-glow {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 1; }
+        .container { max-width: 600px; width: 100%; margin: 0 auto; }
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-align: center;
+            letter-spacing: 4px;
+            text-transform: uppercase;
         }
-        .game-count {
-            animation: pulse-glow 3s ease-in-out infinite;
+        .subtitle {
+            font-size: 11px;
+            font-weight: 700;
+            color: #999;
+            text-align: center;
+            margin-top: 2px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
-        #app-container iframe {
-            transition: opacity 0.3s ease;
+        .game-box {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 20px 24px;
+            margin-top: 16px;
+            box-shadow: 8px 8px 0 0 #111;
+            min-height: 400px;
+            position: relative;
+            overflow: hidden;
         }
-        #app-container iframe.loading {
-            opacity: 0;
-        }
-        #app-container iframe.loaded {
-            opacity: 1;
-        }
-        /* Стиль для сообщения об ошибке */
-        .error-message {
-            background: #fef2f2;
-            border: 2px solid #ef4444;
+        .game-box iframe {
+            width: 100%;
+            height: 500px;
+            border: none;
             border-radius: 16px;
-            padding: 20px;
-            color: #991b1b;
+            display: block;
+            background: white;
         }
-        /* Стиль для лоадера */
-        .loader {
+        /* Прелоадер */
+        .preloader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: 26px;
+            transition: opacity 0.5s ease;
+        }
+        .preloader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .preloader .spinner {
+            width: 48px;
+            height: 48px;
             border: 4px solid #f3f3f3;
             border-top: 4px solid #111;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
+            animation: spin 0.8s linear infinite;
+        }
+        .preloader .text {
+            margin-top: 12px;
+            font-weight: 700;
+            color: #999;
+            font-size: 14px;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Отключаем все Jekyll-обработки */
-        .jekyll-ignore {
-            display: none;
+        .timer { text-align: center; margin-top: 24px; }
+        .timer-number {
+            font-size: 4rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+        .timer-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-top: -4px;
+        }
+        .footer {
+            width: 100%;
+            max-width: 600px;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 2px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: #999;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .game-count { display: flex; align-items: center; gap: 6px; }
+        .game-count .count { 
+            background: #111; 
+            color: white; 
+            padding: 0 10px; 
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 22px;
+        }
+        .error-box { text-align: center; padding: 60px 20px; }
+        .error-box .icon { font-size: 64px; }
+        .error-box .title { font-weight: 900; font-size: 20px; margin: 12px 0 4px; }
+        .error-box .desc { color: #999; font-weight: 600; font-size: 14px; }
+        @media (max-width: 480px) {
+            h1 { font-size: 1.8rem; }
+            .game-box { padding: 12px 14px; }
+            .game-box iframe { height: 400px; }
+            .timer-number { font-size: 3rem; }
         }
     </style>
 </head>
-<body class="bg-white text-neutral-900 min-h-screen flex flex-col justify-between items-center p-4 sm:p-8 selection:bg-neutral-200">
+<body>
 
-    <main class="grow flex flex-col items-center justify-center max-w-4xl w-full my-auto">
-        <div class="text-center mb-6">
-            <h1 class="text-4xl sm:text-5xl font-extrabold tracking-wider text-neutral-900 uppercase">RANDOMS</h1>
-            <p class="text-xs font-bold text-neutral-400 mt-1">рандомный прикол каждые 30-60 минут</p>
+<div class="container">
+    <h1>RANDOMS</h1>
+    <div class="subtitle">рандомный прикол каждые 30-60 минут</div>
+
+    <div class="game-box" id="app-container">
+        <!-- Прелоадер -->
+        <div class="preloader" id="preloader">
+            <div class="spinner"></div>
+            <div class="text">Загрузка игр...</div>
         </div>
+        <!-- Сюда будет iframe -->
+    </div>
 
-        <div id="app-container" class="w-full bg-white rounded-3xl border-2 border-neutral-900 p-6 sm:p-10 shadow-[6px_6px_0px_0px_rgba(17,17,17,1)]">
-            <!-- Сюда будет загружаться iframe с игрой -->
-            <div class="flex flex-col items-center justify-center h-[500px]">
-                <div class="loader"></div>
-                <p class="text-neutral-400 font-bold mt-4">Загрузка игр...</p>
-            </div>
+    <div class="timer">
+        <div class="timer-number" id="timer">00:00:00</div>
+        <div class="timer-label">до следующего хаоса</div>
+    </div>
+
+    <div class="footer">
+        <div class="game-count">
+            🎮 Игр: <span class="count" id="gameCount">...</span>
         </div>
+        <div>⚡ быстрая загрузка</div>
+    </div>
+</div>
 
-        <div class="mt-8 text-center space-y-1">
-            <div id="timer" class="text-4xl sm:text-6xl font-black tracking-normal text-neutral-900">00:00:00</div>
-            <div class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">до следующего хаоса</div>
-        </div>
-    </main>
+<script>
+// === КОНФИГ ===
+const REPO = 'ZefirVSarae/Randoms';
+const GAMES_FOLDER = 'games';
 
-    <footer class="w-full max-w-4xl mt-8 pt-4 border-t border-neutral-200 flex flex-col sm:flex-row justify-between items-center text-xs text-neutral-400 font-bold gap-2">
-        <div class="game-count" id="gameCounter">🎮 Игр: <span id="gameCount">...</span></div>
-        <div>v2.1 · автоматическое определение</div>
-    </footer>
+let TOTAL_GAMES = 0;
+let gameList = [];
+let currentSlot = -1;
+let gameCache = {};
 
-    <script>
-        // === КОНФИГУРАЦИЯ ===
-        // GitHub Pages URL (используем сырые ссылки)
-        const GITHUB_USERNAME = 'ZefirVSarae';
-        const GITHUB_REPO = 'Randoms';
-        const GAMES_FOLDER = 'games';
+// === ПОЛУЧЕНИЕ СПИСКА ИГР (с кешем) ===
+async function fetchGames() {
+    const cacheKey = 'randoms_game_list';
+    const cached = sessionStorage.getItem(cacheKey);
+    
+    if (cached) {
+        try {
+            const data = JSON.parse(cached);
+            gameList = data;
+            TOTAL_GAMES = data.length;
+            updateCounter();
+            console.log(`📦 Загружено из кеша: ${TOTAL_GAMES} игр`);
+            return data;
+        } catch (e) { /* кеш битый */ }
+    }
+    
+    try {
+        const url = `https://api.github.com/repos/${REPO}/contents/${GAMES_FOLDER}`;
+        const resp = await fetch(url, {
+            headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
         
-        // === ОСНОВНАЯ ЛОГИКА ===
-        let TOTAL_TEMPLATES = 0;
-        let gameList = [];
-        let currentActiveSlot = -1;
+        if (!resp.ok) throw new Error('API error');
+        
+        const data = await resp.json();
+        const games = data
+            .filter(f => f.name.endsWith('.html'))
+            .map(f => {
+                const num = parseInt(f.name.replace('.html', ''));
+                return { number: isNaN(num) ? 0 : num, name: f.name };
+            })
+            .filter(f => f.number > 0)
+            .sort((a, b) => a.number - b.number);
+        
+        if (games.length === 0) throw new Error('No games found');
+        
+        gameList = games;
+        TOTAL_GAMES = games.length;
+        sessionStorage.setItem(cacheKey, JSON.stringify(games));
+        updateCounter();
+        console.log(`✅ Загружено ${TOTAL_GAMES} игр (API)`);
+        return games;
+        
+    } catch (e) {
+        console.warn('⚠️ API ошибка, пробуем fallback');
+        return await fetchGamesFallback();
+    }
+}
 
-        // Функция для получения списка игр
-        async function fetchGameList() {
-            try {
-                // Пробуем через GitHub API
-                const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${GAMES_FOLDER}`;
-                const response = await fetch(apiUrl, {
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    // Если API не работает, пробуем через raw.githubusercontent.com
-                    return await fetchGameListFallback();
-                }
-                
-                const files = await response.json();
-                
-                if (!Array.isArray(files)) {
-                    throw new Error('Неверный ответ от API');
-                }
-                
-                // Фильтруем только .html файлы и сортируем по номеру
-                const htmlFiles = files
-                    .filter(file => file.name && file.name.endsWith('.html'))
-                    .map(file => {
-                        const num = parseInt(file.name.replace('.html', ''));
-                        return { 
-                            number: isNaN(num) ? 0 : num, 
-                            name: file.name 
-                        };
-                    })
-                    .filter(f => f.number > 0)
-                    .sort((a, b) => a.number - b.number);
-                
-                if (htmlFiles.length === 0) {
-                    throw new Error('HTML файлы не найдены');
-                }
-                
-                gameList = htmlFiles;
-                TOTAL_TEMPLATES = htmlFiles.length;
-                updateGameCounter();
-                
-                console.log(`✅ Загружено ${TOTAL_TEMPLATES} игр через API`);
-                return htmlFiles;
-                
-            } catch (error) {
-                console.warn('⚠️ API ошибка, пробуем fallback:', error.message);
-                return await fetchGameListFallback();
+// === FALLBACK: ПРОВЕРЯЕМ ФАЙЛЫ ПО ОДНОМУ ===
+async function fetchGamesFallback() {
+    const found = [];
+    for (let i = 1; i <= 50; i++) {
+        try {
+            const url = `https://raw.githubusercontent.com/${REPO}/main/${GAMES_FOLDER}/${i}.html`;
+            const resp = await fetch(url, { method: 'HEAD' });
+            if (resp.ok) {
+                found.push({ number: i, name: `${i}.html` });
             }
+        } catch (e) { /* игнорируем */ }
+    }
+    
+    if (found.length > 0) {
+        gameList = found;
+        TOTAL_GAMES = found.length;
+        updateCounter();
+        console.log(`{TOTAL_GAMES} игр`);
+        return found;
+    }
+    
+    // Локальный список (всегда рабочий)
+    const localGames = [];
+    for (let i = 1; i <= 25; i++) {
+        localGames.push({ number: i, name: `${i}.html` });
+    }
+    gameList = localGames;
+    TOTAL_GAMES = 25;
+    updateCounter();
+    console.log(`📁 Используем локальный список: ${TOTAL_GAMES} игр`);
+    return gameList;
+}
+
+// === ОБНОВЛЕНИЕ СЧЁТЧИКА ===
+function updateCounter() {
+    const el = document.getElementById('gameCount');
+    if (el) el.textContent = TOTAL_GAMES || '?';
+}
+
+// === ЗАГРУЗКА ИГРЫ С ПРЕЛОАДЕРОМ ===
+function loadGame(gameNumber) {
+    const container = document.getElementById('app-container');
+    const preloader = document.getElementById('preloader');
+    
+    // Показываем прелоадер
+    preloader.classList.remove('hidden');
+    
+    // Проверяем кеш iframe
+    const cacheKey = `game_${gameNumber}`;
+    if (gameCache[cacheKey]) {
+        // Если уже загружена — показываем мгновенно
+        container.innerHTML = gameCache[cacheKey];
+        preloader.classList.add('hidden');
+        return;
+    }
+    
+    // Создаём iframe
+    const iframe = document.createElement('iframe');
+    iframe.src = `${GAMES_FOLDER}/${gameNumber}.html`;
+    iframe.title = `Игра ${gameNumber}`;
+    iframe.loading = 'eager';
+    iframe.style.width = '100%';
+    iframe.style.height = '500px';
+    iframe.style.border = 'none';
+    iframe.style.borderRadius = '16px';
+    iframe.style.display = 'block';
+    iframe.style.background = 'white';
+    
+    // Очищаем контейнер и добавляем iframe
+    container.innerHTML = '';
+    container.appendChild(iframe);
+    
+    // Когда iframe загрузился — прячем прелоадер
+    iframe.addEventListener('load', () => {
+        preloader.classList.add('hidden');
+        // Сохраняем в кеш
+        gameCache[cacheKey] = container.innerHTML;
+    });
+    
+    // Таймаут на случай, если iframe завис
+    setTimeout(() => {
+        preloader.classList.add('hidden');
+    }, 5000);
+}
+
+// === ОСНОВНАЯ ЛОГИКА ===
+function getSlot(now) {
+    let idx = 0, current = 0;
+    while (true) {
+        const h = (idx * 12582917 + 72139) % 1000000;
+        const dur = 1800 + (Math.abs(h) % 1801);
+        if (current + dur > now) {
+            return { idx, start: current, dur, end: current + dur };
         }
+        current += dur;
+        idx++;
+    }
+}
 
-        // Fallback метод - пытаемся загрузить список через index
-        async function fetchGameListFallback() {
-            try {
-                // Пробуем загрузить список через прямой запрос к папке (не всегда работает)
-                const baseUrl = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/${GAMES_FOLDER}/`;
-                
-                // Пробуем проверить наличие игр от 1 до 50
-                const foundGames = [];
-                for (let i = 1; i <= 50; i++) {
-                    try {
-                        const response = await fetch(`${baseUrl}${i}.html`, { 
-                            method: 'HEAD',
-                            cache: 'no-cache'
-                        });
-                        if (response.ok) {
-                            foundGames.push({ number: i, name: `${i}.html` });
-                        }
-                    } catch (e) {
-                        // Игнорируем ошибки отдельных файлов
-                    }
-                }
-                
-                if (foundGames.length > 0) {
-                    gameList = foundGames;
-                    TOTAL_TEMPLATES = foundGames.length;
-                    updateGameCounter();
-                    console.log(`✅ Загружено ${TOTAL_TEMPLATES} игр через fallback`);
-                    return foundGames;
-                }
-                
-                // Если ничего не найдено - используем локальный список
-                return useLocalGameList();
-                
-            } catch (error) {
-                console.warn('⚠️ Fallback не сработал:', error.message);
-                return useLocalGameList();
-            }
-        }
+function getGameIndex(slot) {
+    if (TOTAL_GAMES === 0) return 0;
+    const seed = (slot.idx * 1664525 + 1013904223) % 4294967296;
+    const lastTwo = Math.abs(seed) % 100;
+    const subSeed = (slot.idx * 22695477 + 1) % 4294967296;
+    const sub = 15 + (Math.abs(subSeed) % 16);
+    const raw = lastTwo - sub;
+    return Math.abs(raw) % TOTAL_GAMES;
+}
 
-        // Локальный список игр (на случай, если ничего не работает)
-        function useLocalGameList() {
-            // Предполагаем, что у нас есть игры с 1 по 25
-            const localGames = [];
-            for (let i = 1; i <= 25; i++) {
-                localGames.push({ number: i, name: `${i}.html` });
-            }
-            gameList = localGames;
-            TOTAL_TEMPLATES = 25;
-            updateGameCounter();
-            console.log(`📁 Используем локальный список: ${TOTAL_TEMPLATES} игр`);
-            return gameList;
-        }
-
-        // Обновление счётчика в футере
-        function updateGameCounter() {
-            const counter = document.getElementById('gameCount');
-            if (counter) {
-                counter.textContent = TOTAL_TEMPLATES > 0 ? TOTAL_TEMPLATES : '?';
-            }
-        }
-
-        // === ОСНОВНАЯ ЛОГИКА ПОРТАЛА ===
-        function getDeterministicSlot(nowSec) {
-            let slotIndex = 0;
-            let currentSec = 0;
-            let maxAttempts = 1000;
-            
-            while (maxAttempts > 0) {
-                maxAttempts--;
-                let h = (slotIndex * 12582917 + 72139) % 1000000;
-                let duration = 1800 + (Math.abs(h) % 1801);
-                
-                if (currentSec + duration > nowSec) {
-                    return {
-                        slotIndex: slotIndex,
-                        startTime: currentSec,
-                        duration: duration,
-                        endTime: currentSec + duration
-                    };
-                }
-                currentSec += duration;
-                slotIndex++;
-            }
-            
-            return {
-                slotIndex: 0,
-                startTime: nowSec,
-                duration: 1800,
-                endTime: nowSec + 1800
-            };
-        }
-
-        function calculateTemplateIndex(slot) {
-            if (TOTAL_TEMPLATES === 0) return 0;
-            
-            let seed = (slot.slotIndex * 1664525 + 1013904223) % 4294967296;
-            let lastTwoDigits = Math.abs(seed) % 100;
-            let subSeed = (slot.slotIndex * 22695477 + 1) % 4294967296;
-            let subtractValue = 15 + (Math.abs(subSeed) % 16);
-            let rawVal = lastTwoDigits - subtractValue;
-            let finalIdx = Math.abs(rawVal) % TOTAL_TEMPLATES;
-            return finalIdx;
-        }
-
-        function updatePortal() {
-            const nowSec = Math.floor(Date.now() / 1000);
-            const slot = getDeterministicSlot(nowSec);
-            const remaining = slot.endTime - nowSec;
-
-            const h = Math.floor(remaining / 3600);
-            const m = Math.floor((remaining % 3600) / 60);
-            const s = remaining % 60;
-            document.getElementById('timer').innerText = 
-                `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-
-            if (currentActiveSlot !== slot.slotIndex) {
-                currentActiveSlot = slot.slotIndex;
-                
-                if (TOTAL_TEMPLATES === 0) {
-                    const container = document.getElementById('app-container');
-                    container.innerHTML = `
-                        <div class="flex flex-col items-center justify-center h-[500px] text-neutral-400">
-                            <span class="text-6xl mb-4">🎮</span>
-                            <p class="font-bold text-lg">Нет доступных игр</p>
-                            <p class="text-sm">Добавьте игры в папку /games</p>
-                            <button onclick="location.reload()" 
-                                    class="mt-4 px-6 py-2 bg-neutral-900 text-white rounded-full font-bold hover:bg-neutral-700 transition">
-                                Обновить
-                            </button>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                const gameIdx = calculateTemplateIndex(slot);
-                const safeIdx = Math.min(gameIdx, TOTAL_TEMPLATES - 1);
-                const gameNumber = gameList[safeIdx]?.number || (safeIdx + 1);
-                
-                const container = document.getElementById('app-container');
-                container.innerHTML = `
-                    <iframe src="${GAMES_FOLDER}/${gameNumber}.html" 
-                            class="w-full h-[500px] border-0 rounded-2xl"
-                            scrolling="auto"
-                            title="Игра ${gameNumber}"
-                            loading="lazy">
-                    </iframe>
-                `;
-            }
-        }
-
-        // === ИНИЦИАЛИЗАЦИЯ ===
-        async function init() {
-            // Показываем лоадер
+function updatePortal() {
+    const now = Math.floor(Date.now() / 1000);
+    const slot = getSlot(now);
+    const remaining = slot.end - now;
+    
+    // Таймер
+    const h = String(Math.floor(remaining / 3600)).padStart(2, '0');
+    const m = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0');
+    const s = String(remaining % 60).padStart(2, '0');
+    document.getElementById('timer').textContent = `${h}:${m}:${s}`;
+    
+    // Смена игры
+    if (currentSlot !== slot.idx) {
+        currentSlot = slot.idx;
+        
+        if (TOTAL_GAMES === 0) {
             const container = document.getElementById('app-container');
             container.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-[500px]">
-                    <div class="loader"></div>
-                    <p class="text-neutral-400 font-bold mt-4">Загрузка игр...</p>
+                <div class="error-box">
+                    <div class="icon">🎮</div>
+                    <div class="title">Нет игр</div>
+                    <div class="desc">Добавьте .html файлы в папку /games</div>
                 </div>
             `;
-            
-            // Загружаем список игр
-            await fetchGameList();
-            
-            // Обновляем портал
-            updatePortal();
-            
-            // Запускаем таймер
-            setInterval(updatePortal, 1000);
+            document.getElementById('preloader').classList.add('hidden');
+            return;
         }
+        
+        const gameIdx = getGameIndex(slot);
+        const safeIdx = Math.min(gameIdx, TOTAL_GAMES - 1);
+        const gameNum = gameList[safeIdx]?.number || safeIdx + 1;
+        
+        loadGame(gameNum);
+    }
+}
 
-        // Запускаем инициализацию
-        init();
+// === ПРЕДВАРИТЕЛЬНАЯ ЗАГРУЗКА СЛЕДУЮЩЕЙ ИГРЫ ===
+function preloadNextGame() {
+    const now = Math.floor(Date.now() / 1000);
+    const slot = getSlot(now);
+    const gameIdx = getGameIndex(slot);
+    const safeIdx = Math.min(gameIdx, TOTAL_GAMES - 1);
+    const nextIdx = (safeIdx + 1) % TOTAL_GAMES;
+    const gameNum = gameList[nextIdx]?.number || nextIdx + 1;
+    
+    // Предзагружаем следующую игру в фоне
+    setTimeout(() => {
+        const cacheKey = `game_${gameNum}`;
+        if (!gameCache[cacheKey]) {
+            const link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.href = `${GAMES_FOLDER}/${gameNum}.html`;
+            link.as = 'document';
+            document.head.appendChild(link);
+        }
+    }, 100);
+}
 
-        // Обновляем счётчик при фокусе
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                fetchGameList();
-            }
-        });
+// === ЗАПУСК ===
+async function init() {
+    await fetchGames();
+    updatePortal();
+    setInterval(updatePortal, 1000);
+    setInterval(preloadNextGame, 10000);
+}
 
-        // Обновляем список каждые 5 минут
-        setInterval(fetchGameList, 300000);
+// Запускаем мгновенно
+init();
 
-        console.log('🎮 Randoms Portal v2.1');
-        console.log(`📁 Репозиторий: ${GITHUB_USERNAME}/${GITHUB_REPO}`);
-    </script>
+// Обновляем список при фокусе
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) fetchGames();
+});
+
+console.log('🎮 Randoms v3.0 — быстрая загрузка');
+</script>
 </body>
 </html>
