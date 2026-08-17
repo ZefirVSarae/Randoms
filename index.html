@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Randoms</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, button, input, select, textarea {
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+    </style>
+</head>
+<body class="bg-white text-neutral-900 min-h-screen flex flex-col justify-between items-center p-4 sm:p-8 selection:bg-neutral-200">
+
+    <main class="grow flex flex-col items-center justify-center max-w-4xl w-full my-auto">
+        <div class="text-center mb-6">
+            <h1 class="text-4xl sm:text-5xl font-extrabold tracking-wider text-neutral-900 uppercase">RANDOMS</h1>
+            <p class="text-xs font-bold text-neutral-400 mt-1">рандомный прикол каждые 30-60 минут</p>
+        </div>
+
+        <div id="app-container" class="w-full bg-white rounded-3xl border-2 border-neutral-900 p-6 sm:p-10 shadow-[6px_6px_0px_0px_rgba(17,17,17,1)]">
+            <!-- Сюда будет загружаться iframe с игрой -->
+        </div>
+
+        <div class="mt-8 text-center space-y-1">
+            <div id="timer" class="text-4xl sm:text-6xl font-black tracking-normal text-neutral-900">00:00:00</div>
+            <div class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">до следующего хаоса</div>
+        </div>
+    </main>
+
+    <script>
+        const TOTAL_TEMPLATES = 50; // теперь 50 игр
+
+        function getDeterministicSlot(nowSec) {
+            let slotIndex = 0;
+            let currentSec = 0;
+            while (true) {
+                let h = (slotIndex * 12582917 + 72139) % 1000000;
+                let duration = 1800 + (Math.abs(h) % 1801);
+                if (currentSec + duration > nowSec) {
+                    return {
+                        slotIndex: slotIndex,
+                        startTime: currentSec,
+                        duration: duration,
+                        endTime: currentSec + duration
+                    };
+                }
+                currentSec += duration;
+                slotIndex++;
+            }
+        }
+
+        function calculateTemplateIndex(slot) {
+            let seed = (slot.slotIndex * 1664525 + 1013904223) % 4294967296;
+            let lastTwoDigits = Math.abs(seed) % 100;
+            let subSeed = (slot.slotIndex * 22695477 + 1) % 4294967296;
+            let subtractValue = 15 + (Math.abs(subSeed) % 16);
+            let rawVal = lastTwoDigits - subtractValue;
+            let finalIdx = Math.abs(rawVal) % TOTAL_TEMPLATES;
+            return finalIdx; // 0..49
+        }
+
+        let currentActiveSlot = -1;
+
+        function updatePortal() {
+            const nowSec = Math.floor(Date.now() / 1000);
+            const slot = getDeterministicSlot(nowSec);
+            const remaining = slot.endTime - nowSec;
+
+            const h = Math.floor(remaining / 3600);
+            const m = Math.floor((remaining % 3600) / 60);
+            const s = remaining % 60;
+            document.getElementById('timer').innerText = 
+                `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+
+            if (currentActiveSlot !== slot.slotIndex) {
+                currentActiveSlot = slot.slotIndex;
+                
+                const gameIdx = calculateTemplateIndex(slot); // 0..49
+                const gameNumber = gameIdx + 1;              // 1..50
+                
+                const container = document.getElementById('app-container');
+                container.innerHTML = `
+                    <iframe src="games/${gameNumber}.html" 
+                            class="w-full h-[500px] border-0 rounded-2xl"
+                            scrolling="auto"
+                            title="Игра ${gameNumber}"></iframe>
+                `;
+            }
+        }
+
+        setInterval(updatePortal, 1000);
+        updatePortal();
+    </script>
+</body>
+</html>
