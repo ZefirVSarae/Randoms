@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Тетрис</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 16px 20px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 { font-size: 24px; font-weight: 900; margin-bottom: 4px; }
+        .info { display: flex; justify-content: space-between; font-weight: 800; font-size: 16px; margin-bottom: 6px; }
+        canvas {
+            border: 3px solid #111;
+            border-radius: 16px;
+            background: #1a1a2e;
+            display: block;
+            margin: 0 auto;
+            width: 100%;
+            max-width: 280px;
+            aspect-ratio: 10/20;
+        }
+        .status { font-weight: 700; min-height: 24px; margin: 4px 0; color: #333; }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin: 6px 0;
+        }
+        .ctrl-btn {
+            font-family: inherit; font-weight: 800; font-size: 20px;
+            padding: 6px 14px;
+            border: 3px solid #111; border-radius: 12px;
+            background: white; cursor: pointer;
+            box-shadow: 3px 3px 0 0 #ccc;
+            transition: 0.1s;
+            min-width: 48px;
+        }
+        .ctrl-btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 0 #ccc; }
+        .reset-btn {
+            font-family: inherit; font-weight: 800; font-size: 16px;
+            padding: 6px 20px; border: 3px solid #111; border-radius: 40px;
+            background: white; color: #111; cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc; transition: 0.1s;
+            margin-top: 4px;
+        }
+        .reset-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 0 #ccc; }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>🧱 Тетрис</h2>
+        <div class="info">
+            <span>🏆 <span id="score">0</span></span>
+            <span>🎯 <span id="lines">0</span></span>
+        </div>
+        <canvas id="canvas" width="200" height="400"></canvas>
+        <div class="status" id="status">Нажми "Вверх" для поворота</div>
+        <div class="controls">
+            <button class="ctrl-btn" id="left">◀</button>
+            <button class="ctrl-btn" id="right">▶</button>
+            <button class="ctrl-btn" id="rotate">↻</button>
+            <button class="ctrl-btn" id="down">▼</button>
+        </div>
+        <button class="reset-btn" id="resetBtn">🔄 Новая игра</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const linesEl = document.getElementById('lines');
+        const statusEl = document.getElementById('status');
+
+        const COLS = 10, ROWS = 20;
+        const BLOCK = 20;
+        let board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+        let score = 0, lines = 0;
+        let gameOver = false;
+        let dropInterval = null;
+
+        const shapes = [
+            [[1,1,1,1]],
+            [[1,1],[1,1]],
+            [[0,1,0],[1,1,1]],
+            [[1,0,0],[1,1,1]],
+            [[0,0,1],[1,1,1]],
+            [[0,1,1],[1,1,0]],
+            [[1,1,0],[0,1,1]]
+        ];
+        const colors = ['#ef4444','#3b82f6','#22c55e','#eab308','#8b5cf6','#ec4899','#14b8a6'];
+
+        let currentPiece = null;
+        let pieceX = 0, pieceY = 0;
+
+        function newPiece() {
+            const idx = Math.floor(Math.random() * shapes.length);
+            const shape = shapes[idx].map(row => [...row]);
+            currentPiece = {
+                shape,
+                color: colors[idx]
+            };
+            pieceX = Math.floor((COLS - shape[0].length) / 2);
+            pieceY = 0;
+            if (!collision(pieceX, pieceY, shape)) {
+                draw();
+            } else {
+                gameOver = true;
+                if (dropInterval) clearInterval(dropInterval);
+                statusEl.textContent = '💀 Игра окончена!';
+            }
+        }
+
+        function collision(offsetX, offsetY, shape) {
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[0].length; c++) {
+                    if (shape[r][c] !== 0) {
+                        const newX = offsetX + c;
+                        const newY = offsetY + r;
+                        if (newX < 0 || newX >= COLS || newY >= ROWS || newY < 0) return true;
+                        if (newY >= 0 && board[newY][newX] !== 0) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function merge() {
+            for (let r = 0; r < currentPiece.shape.length; r++) {
+                for (let c = 0; c < currentPiece.shape[0].length; c++) {
+                    if (currentPiece.shape[r][c] !== 0) {
+                        const y = pieceY + r;
+                        const x = pieceX + c;
+                        if (y >= 0 && y < ROWS && x >= 0 && x < COLS) {
+                            board[y][x] = currentPiece.color;
+                        }
+                    }
+                }
+            }
+            clearLines();
+            newPiece();
+            draw();
+        }
+
+        function clearLines() {
+            let cleared = 0;
+            for (let y = ROWS-1; y >= 0; ) {
+                let full = true;
+                for (let x = 0; x < COLS; x++) {
+                    if (board[y][x] === 0) { full = false; break; }
+                }
+                if (full) {
+                    board.splice(y, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    cleared++;
+                    // остаёмся на той же строке
+                } else {
+                    y--;
+                }
+            }
+            if (cleared > 0) {
+                lines += cleared;
+                score += cleared * 100;
+                linesEl.textContent = lines;
+                scoreEl.textContent = score;
+            }
+        }
+
+        function moveDown() {
+            if (gameOver) return;
+            if (!collision(pieceX, pieceY+1, currentPiece.shape)) {
+                pieceY++;
+                draw();
+            } else {
+                merge();
+            }
+        }
+
+        function moveLeft() {
+            if (gameOver) return;
+            if (!collision(pieceX-1, pieceY, currentPiece.shape)) {
+                pieceX--;
+                draw();
+            }
+        }
+
+        function moveRight() {
+            if (gameOver) return;
+            if (!collision(pieceX+1, pieceY, currentPiece.shape)) {
+                pieceX++;
+                draw();
+            }
+        }
+
+        function rotatePiece() {
+            if (gameOver) return;
+            const shape = currentPiece.shape;
+            const rotated = shape[0].map((_, idx) => shape.map(row => row[idx]).reverse());
+            if (!collision(pieceX, pieceY, rotated)) {
+                currentPiece.shape = rotated;
+                draw();
+            } else {
+                // попробуем сместить влево-вправо
+                if (!collision(pieceX-1, pieceY, rotated)) {
+                    pieceX--;
+                    currentPiece.shape = rotated;
+                    draw();
+                } else if (!collision(pieceX+1, pieceY, rotated)) {
+                    pieceX++;
+                    currentPiece.shape = rotated;
+                    draw();
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // board
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    if (board[y][x] !== 0) {
+                        ctx.fillStyle = board[y][x];
+                        ctx.fillRect(x*BLOCK, y*BLOCK, BLOCK-1, BLOCK-1);
+                    }
+                }
+            }
+            // current piece
+            if (currentPiece) {
+                const shape = currentPiece.shape;
+                for (let r = 0; r < shape.length; r++) {
+                    for (let c = 0; c < shape[0].length; c++) {
+                        if (shape[r][c] !== 0) {
+                            const x = (pieceX + c) * BLOCK;
+                            const y = (pieceY + r) * BLOCK;
+                            ctx.fillStyle = currentPiece.color;
+                            ctx.fillRect(x, y, BLOCK-1, BLOCK-1);
+                        }
+                    }
+                }
+            }
+        }
+
+        function resetGame() {
+            if (dropInterval) clearInterval(dropInterval);
+            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+            score = 0; lines = 0;
+            scoreEl.textContent = '0';
+            linesEl.textContent = '0';
+            gameOver = false;
+            statusEl.textContent = 'Игра началась!';
+            newPiece();
+            draw();
+            dropInterval = setInterval(moveDown, 500);
+        }
+
+        // управление
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') { e.preventDefault(); moveLeft(); }
+            else if (e.key === 'ArrowRight') { e.preventDefault(); moveRight(); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); moveDown(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); rotatePiece(); }
+        });
+
+        document.getElementById('left').addEventListener('click', moveLeft);
+        document.getElementById('right').addEventListener('click', moveRight);
+        document.getElementById('down').addEventListener('click', moveDown);
+        document.getElementById('rotate').addEventListener('click', rotatePiece);
+        resetBtn.addEventListener('click', resetGame);
+
+        resetGame();
+    </script>
+</body>
+</html>
