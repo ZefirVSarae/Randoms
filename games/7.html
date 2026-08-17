@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Викторина</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 20px 24px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+        }
+        .progress {
+            font-weight: 800;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .question {
+            font-weight: 800;
+            font-size: 18px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 14px 0;
+        }
+        .opt-btn {
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 16px;
+            padding: 10px 16px;
+            border: 3px solid #111;
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            transition: 0.1s;
+            box-shadow: 4px 4px 0 0 #ccc;
+            text-align: left;
+        }
+        .opt-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+        .opt-btn.correct { background: #86efac; }
+        .opt-btn.wrong { background: #fca5a5; }
+        .opt-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .result {
+            font-weight: 800;
+            font-size: 20px;
+            margin: 8px 0;
+        }
+        .reset-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 16px;
+            padding: 8px 24px;
+            border: 3px solid #111;
+            border-radius: 40px;
+            background: white;
+            color: #111;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            margin-top: 4px;
+        }
+        .reset-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>❓ Викторина</h2>
+        <div class="progress" id="progress">Вопрос 1 из 10</div>
+        <div class="question" id="question">Загрузка...</div>
+        <div class="options" id="options"></div>
+        <div class="result" id="result"></div>
+        <button class="reset-btn" id="resetBtn">🔄 Начать заново</button>
+    </div>
+    <script>
+        const quiz = [
+            { q: 'Столица Франции?', opts: ['Лондон', 'Париж', 'Берлин', 'Мадрид'], ans: 1 },
+            { q: 'Сколько планет в Солнечной системе (классических)?', opts: ['7', '8', '9', '10'], ans: 1 },
+            { q: 'Какой газ преобладает в атмосфере Земли?', opts: ['Кислород', 'Углекислый газ', 'Азот', 'Водород'], ans: 2 },
+            { q: 'Кто написал "Войну и мир"?', opts: ['Толстой', 'Достоевский', 'Пушкин', 'Чехов'], ans: 0 },
+            { q: 'Какой океан самый большой?', opts: ['Атлантический', 'Индийский', 'Тихий', 'Северный Ледовитый'], ans: 2 },
+            { q: 'Сколько дней в феврале в високосный год?', opts: ['28', '29', '30', '31'], ans: 1 },
+            { q: 'Какое животное является символом Австралии?', opts: ['Кенгуру', 'Коала', 'Утконос', 'Динго'], ans: 0 },
+            { q: 'Какой химический элемент обозначается "O"?', opts: ['Осмий', 'Олово', 'Кислород', 'Озон'], ans: 2 },
+            { q: 'Сколько цветов в радуге?', opts: ['5', '6', '7', '8'], ans: 2 },
+            { q: 'Кто открыл Америку?', opts: ['Магеллан', 'Васко да Гама', 'Колумб', 'Кук'], ans: 2 }
+        ];
+
+        let current = 0;
+        let score = 0;
+        let answered = false;
+
+        const progressEl = document.getElementById('progress');
+        const questionEl = document.getElementById('question');
+        const optionsEl = document.getElementById('options');
+        const resultEl = document.getElementById('result');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function showQuestion() {
+            if (current >= quiz.length) {
+                questionEl.textContent = 'Викторина завершена!';
+                optionsEl.innerHTML = '';
+                resultEl.textContent = `🎯 Правильных: ${score} из ${quiz.length}`;
+                progressEl.textContent = 'Финиш';
+                return;
+            }
+            const data = quiz[current];
+            progressEl.textContent = `Вопрос ${current+1} из ${quiz.length}`;
+            questionEl.textContent = data.q;
+            optionsEl.innerHTML = '';
+            data.opts.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'opt-btn';
+                btn.textContent = opt;
+                btn.dataset.idx = idx;
+                btn.addEventListener('click', () => handleAnswer(idx, btn));
+                optionsEl.appendChild(btn);
+            });
+            resultEl.textContent = '';
+            answered = false;
+        }
+
+        function handleAnswer(idx, btn) {
+            if (answered) return;
+            answered = true;
+            const data = quiz[current];
+            const isCorrect = (idx === data.ans);
+            if (isCorrect) score++;
+            // подсветка
+            const allBtns = document.querySelectorAll('.opt-btn');
+            allBtns.forEach((b, i) => {
+                b.disabled = true;
+                if (i === data.ans) b.classList.add('correct');
+                if (i === idx && !isCorrect) b.classList.add('wrong');
+            });
+            resultEl.textContent = isCorrect ? '✅ Правильно!' : `❌ Неправильно. Правильный ответ: ${data.opts[data.ans]}`;
+            // переход к следующему через паузу
+            setTimeout(() => {
+                current++;
+                showQuestion();
+            }, 1200);
+        }
+
+        function resetQuiz() {
+            current = 0;
+            score = 0;
+            showQuestion();
+        }
+
+        resetBtn.addEventListener('click', resetQuiz);
+        resetQuiz();
+    </script>
+</body>
+</html>
