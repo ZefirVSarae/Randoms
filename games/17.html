@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Судоку</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 16px 18px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 { font-size: 24px; font-weight: 900; margin-bottom: 4px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            max-width: 300px;
+            margin: 10px auto;
+        }
+        .cell {
+            aspect-ratio: 1/1;
+            border: 2px solid #111;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: 0.1s;
+            background: white;
+            touch-action: manipulation;
+            min-height: 50px;
+        }
+        .cell.fixed {
+            background: #f5f5f5;
+            color: #333;
+        }
+        .cell.selected {
+            background: #facc15;
+            border-color: #ca8a04;
+            transform: scale(1.02);
+        }
+        .cell.error {
+            background: #fca5a5;
+            color: #dc2626;
+        }
+        .cell:active:not(.fixed) {
+            transform: scale(0.92);
+        }
+        .numbers {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            max-width: 300px;
+            margin: 10px auto;
+        }
+        .num-btn {
+            aspect-ratio: 1/1;
+            border: 3px solid #111;
+            border-radius: 12px;
+            font-size: 28px;
+            font-weight: 900;
+            background: white;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            touch-action: manipulation;
+            min-height: 50px;
+        }
+        .num-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+        .status {
+            font-weight: 700;
+            min-height: 28px;
+            margin: 6px 0;
+            font-size: 16px;
+        }
+        .reset-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 16px;
+            padding: 10px 28px;
+            border: 3px solid #111;
+            border-radius: 40px;
+            background: white;
+            color: #111;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            margin-top: 4px;
+            touch-action: manipulation;
+            min-height: 48px;
+        }
+        .reset-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+        .hint {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        @media (max-width: 480px) {
+            .game { padding: 12px 14px; }
+            .cell { font-size: 22px; min-height: 40px; }
+            .num-btn { font-size: 22px; min-height: 40px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>🧩 Судоку 4×4</h2>
+        <div class="grid" id="grid"></div>
+        <div class="status" id="status">Выбери клетку, затем цифру</div>
+        <div class="numbers" id="numbers"></div>
+        <div class="hint">👆 Нажми на клетку, потом на цифру</div>
+        <button class="reset-btn" id="resetBtn">🔄 Новая игра</button>
+    </div>
+    <script>
+        const SIZE = 4;
+        const BOX = 2;
+        let board = [];
+        let solution = [];
+        let fixed = [];
+        let selected = null;
+        let errors = 0;
+
+        const gridEl = document.getElementById('grid');
+        const numbersEl = document.getElementById('numbers');
+        const statusEl = document.getElementById('status');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function generateSudoku() {
+            // простая генерация для 4×4
+            const base = [
+                [1,2,3,4],
+                [3,4,1,2],
+                [2,1,4,3],
+                [4,3,2,1]
+            ];
+            // перетасовка
+            const shuffle = (arr) => {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            };
+            // перетасовка цифр
+            const nums = shuffle([1,2,3,4]);
+            const boardData = base.map(row => row.map(n => nums[n-1]));
+            
+            // перетасовка строк и столбцов
+            const rowPerm = shuffle([0,1,2,3]);
+            const colPerm = shuffle([0,1,2,3]);
+            const shuffled = boardData.map((row, i) => 
+                row.map((val, j) => boardData[rowPerm[i]][colPerm[j]])
+            );
+            
+            return shuffled;
+        }
+
+        function createPuzzle() {
+            solution = generateSudoku();
+            board = solution.map(row => [...row]);
+            fixed = board.map(row => row.map(() => false));
+            
+            // удаляем случайные клетки (оставляем ~8-10 подсказок)
+            let toRemove = 8;
+            while (toRemove > 0) {
+                const x = Math.floor(Math.random() * SIZE);
+                const y = Math.floor(Math.random() * SIZE);
+                if (!fixed[y][x] && board[y][x] !== 0) {
+                    board[y][x] = 0;
+                    fixed[y][x] = true; // фиксируем как пустую
+                    toRemove--;
+                }
+            }
+            // фиксируем заполненные
+            for (let y = 0; y < SIZE; y++) {
+                for (let x = 0; x < SIZE; x++) {
+                    if (board[y][x] !== 0) fixed[y][x] = true;
+                }
+            }
+            selected = null;
+            errors = 0;
+            render();
+            statusEl.textContent = 'Реши судоку!';
+        }
+
+        function render() {
+            gridEl.innerHTML = '';
+            for (let y = 0; y < SIZE; y++) {
+                for (let x = 0; x < SIZE; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    const val = board[y][x];
+                    if (val !== 0) {
+                        cell.textContent = val;
+                        if (fixed[y][x]) cell.classList.add('fixed');
+                    }
+                    if (selected && selected.x === x && selected.y === y) {
+                        cell.classList.add('selected');
+                    }
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    cell.addEventListener('click', () => selectCell(x, y));
+                    gridEl.appendChild(cell);
+                }
+            }
+            // цифры
+            numbersEl.innerHTML = '';
+            for (let i = 1; i <= SIZE; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'num-btn';
+                btn.textContent = i;
+                btn.addEventListener('click', () => placeNumber(i));
+                numbersEl.appendChild(btn);
+            }
+        }
+
+        function selectCell(x, y) {
+            if (fixed[y][x]) return;
+            selected = {x, y};
+            render();
+            statusEl.textContent = `Выбрана клетка (${x+1}, ${y+1})`;
+        }
+
+        function placeNumber(num) {
+            if (!selected) {
+                statusEl.textContent = 'Сначала выбери клетку!';
+                return;
+            }
+            const {x, y} = selected;
+            if (fixed[y][x]) {
+                statusEl.textContent = 'Эта клетка фиксирована!';
+                return;
+            }
+            if (num === solution[y][x]) {
+                board[y][x] = num;
+                fixed[y][x] = true;
+                statusEl.textContent = '✅ Правильно!';
+                selected = null;
+                render();
+                checkWin();
+            } else {
+                errors++;
+                statusEl.textContent = `❌ Неправильно! (ошибок: ${errors})`;
+                board[y][x] = num;
+                // показываем ошибку
+                render();
+                // через секунду убираем
+                setTimeout(() => {
+                    board[y][x] = 0;
+                    render();
+                }, 500);
+            }
+        }
+
+        function checkWin() {
+            let filled = true;
+            for (let y = 0; y < SIZE; y++) {
+                for (let x = 0; x < SIZE; x++) {
+                    if (board[y][x] === 0) filled = false;
+                }
+            }
+            if (filled) {
+                statusEl.textContent = '🎉 Поздравляю! Судоку решено!';
+            }
+        }
+
+        resetBtn.addEventListener('click', createPuzzle);
+        createPuzzle();
+    </script>
+</body>
+</html>
