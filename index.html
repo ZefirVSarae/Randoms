@@ -126,10 +126,10 @@
             gap: 6px;
         }
         .game-count { display: flex; align-items: center; gap: 6px; }
-        .game-count .count { 
-            background: #111; 
-            color: white; 
-            padding: 0 10px; 
+        .game-count .count {
+            background: #111;
+            color: white;
+            padding: 0 10px;
             border-radius: 12px;
             font-size: 13px;
             line-height: 22px;
@@ -138,6 +138,18 @@
         .error-box .icon { font-size: 64px; }
         .error-box .title { font-weight: 900; font-size: 20px; margin: 12px 0 4px; }
         .error-box .desc { color: #999; font-weight: 600; font-size: 14px; }
+
+        /* === ЗАГОЛОВОК ИГРЫ === */
+        .game-title {
+            font-weight: 800;
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #111;
+            text-align: center;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            word-break: break-word;
+        }
 
         /* === КНОПКА ТЕЛЕГРАМ === */
         .telegram-button {
@@ -235,7 +247,7 @@ let TOTAL_GAMES = 0;
 let gameList = [];
 let currentSlot = -1;
 let gameCache = {};
-let hasReloaded = false; // защита от многократной перезагрузки
+let hasReloaded = false;
 
 // === ПОЛУЧЕНИЕ СПИСКА ИГР (с кешем) ===
 async function fetchGames() {
@@ -249,7 +261,7 @@ async function fetchGames() {
             TOTAL_GAMES = data.length;
             updateCounter();
             return data;
-        } catch (e) { /* кеш битый */ }
+        } catch (e) {}
     }
     
     try {
@@ -293,7 +305,7 @@ async function fetchGamesFallback() {
             if (resp.ok) {
                 found.push({ number: i, name: `${i}.html` });
             }
-        } catch (e) { /* игнорируем */ }
+        } catch (e) {}
     }
     
     if (found.length > 0) {
@@ -319,7 +331,7 @@ function updateCounter() {
     if (el) el.textContent = TOTAL_GAMES || '?';
 }
 
-// === ЗАГРУЗКА ИГРЫ С ПРЕЛОАДЕРОМ ===
+// === ЗАГРУЗКА ИГРЫ С ПРЕЛОАДЕРОМ И ЗАГОЛОВКОМ ===
 function loadGame(gameNumber) {
     const container = document.getElementById('app-container');
     const preloader = document.getElementById('preloader');
@@ -333,6 +345,11 @@ function loadGame(gameNumber) {
         return;
     }
     
+    // Создаём заголовок
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'game-title';
+    titleDiv.textContent = 'Загрузка...';
+    
     const iframe = document.createElement('iframe');
     iframe.src = `${GAMES_FOLDER}/${gameNumber}.html`;
     iframe.title = `Игра ${gameNumber}`;
@@ -345,14 +362,29 @@ function loadGame(gameNumber) {
     iframe.style.background = 'white';
     
     container.innerHTML = '';
+    container.appendChild(titleDiv);
     container.appendChild(iframe);
     
     iframe.addEventListener('load', () => {
+        // Достаём title из загруженного iframe
+        try {
+            const iframeTitle = iframe.contentDocument.title || iframe.contentWindow.document.title;
+            titleDiv.textContent = iframeTitle && iframeTitle.trim() !== '' 
+                ? iframeTitle 
+                : `Игра ${gameNumber}`;
+        } catch (e) {
+            // Если доступ запрещён (кросс-домен), используем fallback
+            titleDiv.textContent = `Игра ${gameNumber}`;
+        }
         preloader.classList.add('hidden');
         gameCache[cacheKey] = container.innerHTML;
     });
     
+    // Страховка на случай, если iframe не сработал
     setTimeout(() => {
+        if (titleDiv.textContent === 'Загрузка...') {
+            titleDiv.textContent = `Игра ${gameNumber}`;
+        }
         preloader.classList.add('hidden');
     }, 5000);
 }
@@ -386,20 +418,17 @@ function updatePortal() {
     const slot = getSlot(now);
     const remaining = slot.end - now;
     
-    // Таймер
     const h = String(Math.floor(remaining / 3600)).padStart(2, '0');
     const m = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0');
     const s = String(remaining % 60).padStart(2, '0');
     document.getElementById('timer').textContent = `${h}:${m}:${s}`;
     
-    // Если время вышло — перезагружаем страницу (только один раз)
     if (remaining <= 0 && !hasReloaded) {
         hasReloaded = true;
         location.reload();
         return;
     }
     
-    // Смена игры
     if (currentSlot !== slot.idx) {
         currentSlot = slot.idx;
         
@@ -455,7 +484,6 @@ async function init() {
 
 init();
 
-// Обновляем список при фокусе
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) fetchGames();
 });
