@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кубик</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .game {
+            background: white;
+            border: 3px solid #111;
+            border-radius: 32px;
+            padding: 20px 24px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 6px 6px 0 0 #111;
+            text-align: center;
+        }
+        h2 {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+        .dice {
+            font-size: 100px;
+            line-height: 1.2;
+            margin: 10px 0;
+            transition: transform 0.2s;
+            display: inline-block;
+        }
+        .rolling {
+            animation: shake 0.5s ease-in-out;
+        }
+        @keyframes shake {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(20deg) scale(1.1); }
+            50% { transform: rotate(-20deg) scale(0.9); }
+            75% { transform: rotate(10deg) scale(1.05); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+        .roll-btn {
+            font-family: inherit;
+            font-weight: 900;
+            font-size: 24px;
+            padding: 14px 40px;
+            border: 4px solid #111;
+            border-radius: 60px;
+            background: #111;
+            color: white;
+            cursor: pointer;
+            transition: 0.1s;
+            box-shadow: 6px 6px 0 0 #555;
+            margin: 8px 0 12px;
+        }
+        .roll-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 3px 3px 0 0 #555;
+        }
+        .roll-btn:disabled {
+            opacity: 0.5;
+            transform: none;
+            box-shadow: 3px 3px 0 0 #555;
+            cursor: not-allowed;
+        }
+        .history {
+            font-weight: 700;
+            font-size: 16px;
+            color: #444;
+            margin-top: 8px;
+            min-height: 30px;
+        }
+        .reset-btn {
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 16px;
+            padding: 8px 24px;
+            border: 3px solid #111;
+            border-radius: 40px;
+            background: white;
+            color: #111;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 0 #ccc;
+            transition: 0.1s;
+            margin-top: 4px;
+        }
+        .reset-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h2>🎲 Кубик</h2>
+        <div class="dice" id="dice">⚀</div>
+        <button class="roll-btn" id="rollBtn">Бросить</button>
+        <div class="history" id="history"></div>
+        <button class="reset-btn" id="resetBtn">🗑️ Очистить историю</button>
+    </div>
+    <script>
+        const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        const diceEl = document.getElementById('dice');
+        const rollBtn = document.getElementById('rollBtn');
+        const historyEl = document.getElementById('history');
+        const resetBtn = document.getElementById('resetBtn');
+        let history = [];
+
+        function rollDice() {
+            rollBtn.disabled = true;
+            diceEl.classList.add('rolling');
+            const result = Math.floor(Math.random() * 6) + 1;
+            // анимация смены символов
+            let count = 0;
+            const interval = setInterval(() => {
+                diceEl.textContent = diceFaces[Math.floor(Math.random() * 6)];
+                count++;
+                if (count > 8) {
+                    clearInterval(interval);
+                    diceEl.textContent = diceFaces[result - 1];
+                    diceEl.classList.remove('rolling');
+                    rollBtn.disabled = false;
+                    history.push(result);
+                    updateHistory();
+                }
+            }, 80);
+        }
+
+        function updateHistory() {
+            if (history.length === 0) {
+                historyEl.textContent = 'Нет бросков';
+                return;
+            }
+            const lastFive = history.slice(-5);
+            historyEl.textContent = 'Последние: ' + lastFive.join('  ');
+        }
+
+        resetBtn.addEventListener('click', () => {
+            history = [];
+            updateHistory();
+        });
+
+        rollBtn.addEventListener('click', rollDice);
+        // начальный бросок
+        diceEl.textContent = diceFaces[Math.floor(Math.random() * 6)];
+        historyEl.textContent = 'Нет бросков';
+    </script>
+</body>
+</html>
